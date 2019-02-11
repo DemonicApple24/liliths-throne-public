@@ -8,7 +8,7 @@ import com.lilithsthrone.game.character.effects.PerkManager;
 import com.lilithsthrone.game.character.fetishes.Fetish;
 import com.lilithsthrone.game.character.npc.NPC;
 import com.lilithsthrone.game.character.npc.misc.Elemental;
-import com.lilithsthrone.game.dialogue.DialogueNodeOld;
+import com.lilithsthrone.game.dialogue.DialogueNode;
 import com.lilithsthrone.game.dialogue.DialogueNodeType;
 import com.lilithsthrone.game.dialogue.responses.Response;
 import com.lilithsthrone.game.dialogue.responses.ResponseEffectsOnly;
@@ -55,8 +55,7 @@ public class CharactersPresentDialogue {
 	}
 	
 	
-	public static final DialogueNodeOld MENU = new DialogueNodeOld("", "", true) {
-		private static final long serialVersionUID = 1L;
+	public static final DialogueNode MENU = new DialogueNode("", "", true) {
 
 		@Override
 		public DialogueNodeType getDialogueNodeType() {
@@ -327,12 +326,12 @@ public class CharactersPresentDialogue {
 					
 				} else if(index==5) {
 					if(!Main.game.isSavedDialogueNeutral()) {
-						return new Response(characterViewed instanceof Elemental?"Dispell":"Go Home", "You're in the middle of something right now! (Can only be used when in a tile's default dialogue.)", null);
+						return new Response(characterViewed instanceof Elemental?"Dispel":"Go Home", "You're in the middle of something right now! (Can only be used when in a tile's default dialogue.)", null);
 						
 					} else {
 						if(charactersPresent.size()==1 || (charactersPresent.size()==2 && characterViewed.isElementalSummoned())) {
-							return new ResponseEffectsOnly(characterViewed instanceof Elemental?"Dispell":"Go Home",
-									characterViewed instanceof Elemental?"Dispell [npc.namePos] physical form, and return [npc.herHim] to your arcane aura.":"Tell [npc.name] to go home."){
+							return new ResponseEffectsOnly(characterViewed instanceof Elemental?"Dispel":"Go Home",
+									characterViewed instanceof Elemental?"Dispel [npc.namePos] physical form, and return [npc.herHim] to your arcane aura.":"Tell [npc.name] to go home."){
 								@Override
 								public void effects() {
 									if(characterViewed.isElementalSummoned()) {
@@ -345,8 +344,8 @@ public class CharactersPresentDialogue {
 								}
 							};
 						} else {
-							return new Response(characterViewed instanceof Elemental?"Dispell":"Go Home",
-									characterViewed instanceof Elemental?"Dispell [npc.namePos] physical form, and return [npc.herHim] to your arcane aura.":"Tell [npc.name] to go home.",
+							return new Response(characterViewed instanceof Elemental?"Dispel":"Go Home",
+									characterViewed instanceof Elemental?"Dispel [npc.namePos] physical form, and return [npc.herHim] to your arcane aura.":"Tell [npc.name] to go home.",
 									MENU){
 								@Override
 								public void effects() {
@@ -372,14 +371,14 @@ public class CharactersPresentDialogue {
 					
 				} else if(index==10) {
 					if(!characterViewed.isElementalSummoned()) {
-						return new Response("Dispell Elemental", "[npc.Name] doesn't have an elemental summoned...", null);
+						return new Response("Dispel Elemental", "[npc.Name] doesn't have an elemental summoned...", null);
 						
 					} else {
 						if(!Main.game.isSavedDialogueNeutral()) {
-							return new Response("Dispell Elemental", "You're in the middle of something right now! (Can only be used when in a tile's default dialogue.)", null);
+							return new Response("Dispel Elemental", "You're in the middle of something right now! (Can only be used when in a tile's default dialogue.)", null);
 							
 						} else {
-							return new Response("Dispell Elemental", "Tell [npc.name] to dispell [npc.her] elemental.", MENU){
+							return new Response("Dispel Elemental", "Tell [npc.name] to dispel [npc.her] elemental.", MENU){
 								@Override
 								public void effects() {
 									characterViewed.removeCompanion(characterViewed.getElemental());
@@ -396,8 +395,7 @@ public class CharactersPresentDialogue {
 		}
 	};
 	
-	public static final DialogueNodeOld AFTER_SEX = new DialogueNodeOld("Step back", "", true) {
-		private static final long serialVersionUID = 1L;
+	public static final DialogueNode AFTER_SEX = new DialogueNode("Step back", "", true) {
 		
 		@Override
 		public String getDescription(){
@@ -437,7 +435,7 @@ public class CharactersPresentDialogue {
 			if (index == 1) {
 				return new Response("Continue", "Decide what to do next.", AFTER_SEX) {
 					@Override
-					public DialogueNodeOld getNextDialogue() {
+					public DialogueNode getNextDialogue() {
 						return Main.game.getDefaultDialogueNoEncounter();
 					}
 					@Override
@@ -453,8 +451,7 @@ public class CharactersPresentDialogue {
 	};
 	
 
-	public static final DialogueNodeOld PERKS = new DialogueNodeOld("", "", true) {
-		private static final long serialVersionUID = 1L;
+	public static final DialogueNode PERKS = new DialogueNode("", "", true) {
 
 		@Override
 		public DialogueNodeType getDialogueNodeType() {
