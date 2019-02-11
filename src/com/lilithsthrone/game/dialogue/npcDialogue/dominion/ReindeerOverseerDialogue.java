@@ -4,17 +4,15 @@ import com.lilithsthrone.game.character.attributes.Attribute;
 import com.lilithsthrone.game.character.attributes.IntelligenceLevel;
 import com.lilithsthrone.game.character.attributes.PhysiqueLevel;
 import com.lilithsthrone.game.character.npc.NPC;
-import com.lilithsthrone.game.dialogue.DialogueNodeOld;
+import com.lilithsthrone.game.dialogue.DialogueNode;
 import com.lilithsthrone.game.dialogue.responses.Response;
 import com.lilithsthrone.game.dialogue.responses.ResponseSex;
 import com.lilithsthrone.game.dialogue.responses.ResponseTrade;
 import com.lilithsthrone.game.dialogue.utils.UtilText;
 import com.lilithsthrone.game.sex.Sex;
-import com.lilithsthrone.game.sex.SexPositionSlot;
-import com.lilithsthrone.game.sex.managers.universal.SMStanding;
+import com.lilithsthrone.game.sex.managers.universal.SMGeneric;
 import com.lilithsthrone.main.Main;
 import com.lilithsthrone.utils.Util;
-import com.lilithsthrone.utils.Util.Value;
 
 /**
  * @since 0.1.96
@@ -58,11 +56,18 @@ public class ReindeerOverseerDialogue {
 				return new ResponseSex("Relieve stress",
 					"Ask [npc.name] if [npc.she]'d like to blow off some steam with you.",
 					true, true,
-					new SMStanding(
-							Util.newHashMapOfValues(new Value<>(Main.game.getPlayer(), SexPositionSlot.STANDING_DOMINANT)),
-							Util.newHashMapOfValues(new Value<>(reindeer(), SexPositionSlot.STANDING_SUBMISSIVE))),
+					new SMGeneric(
+							Util.newArrayListOfValues(Main.game.getPlayer()),
+							Util.newArrayListOfValues(reindeer()),
 					null,
-					null, AFTER_SEX, "<p>"
+					null) {
+						@Override
+						public boolean isPublicSex() {
+							return false;
+						}
+					},
+					AFTER_SEX,
+					"<p>"
 						+ "Putting on your most seductive voice, you step close to [npc.name] and ask,"
 						+ " [pc.speech(You know, if you're feeling stressed from all this work, maybe I could help you to blow off some steam?)]"
 					+ "</p>"
@@ -93,7 +98,7 @@ public class ReindeerOverseerDialogue {
 					Main.game.getDialogueFlags().addReindeerEncountered(reindeer().getId());
 				}
 				@Override
-				public DialogueNodeOld getNextDialogue(){
+				public DialogueNode getNextDialogue(){
 					return Main.game.getDefaultDialogueNoEncounter();
 				}
 			};
@@ -103,8 +108,7 @@ public class ReindeerOverseerDialogue {
 		}
 	}
 	
-	public static final DialogueNodeOld ENCOUNTER_START = new DialogueNodeOld("Reindeer Overseer", "", true) {
-		private static final long serialVersionUID = 1L;
+	public static final DialogueNode ENCOUNTER_START = new DialogueNode("Reindeer Overseer", "", true) {
 
 		@Override
 		public String getContent() {
@@ -143,7 +147,7 @@ public class ReindeerOverseerDialogue {
 				if(Main.game.getDialogueFlags().hasEncounteredAnyReindeers()) {
 					UtilText.nodeContentSB.append("<p>"
 							+ "Feeling happy now that you've found the overseer for this particular group, you reply,"
-							+ " [pc.speech(What sort of goods do you have? I've spoken with another overseer already, and they mostly had Yuletide-related clothing, food and drink, as well as some clothing from the Kitsune forest.)]"
+							+ " [pc.speech(What sort of goods do you have? I've spoken with another overseer already, and they mostly had Yuletide-related clothing, food and drink, as well as some clothing from the youko.)]"
 						+ "</p>"
 						+ "<p>"
 							+ "The [npc.race] smiles."
@@ -161,7 +165,7 @@ public class ReindeerOverseerDialogue {
 							+ " [npc.speech(We travel here from our homeland out in the frozen tundra every winter."
 								+ " We stay here to work until the end of February, which is when it stops snowing, and then we migrate back to the tundra for the rest of the year, which is why you haven't seen us before."
 								+ " As to what goods I can offer, we've brought plenty of the food, drink, and clothing that we make in our homeland."
-								+ " We travelled through the Kitsune's forest this year, so I also have some of their traditional clothing which we traded for.)]"
+								+ " We travelled through the Shinrin highlands this year, so I also have some of the youko's traditional clothing which we traded for.)]"
 						+ "</p>");
 				}
 			}
@@ -203,8 +207,7 @@ public class ReindeerOverseerDialogue {
 		}
 	};
 	
-	public static final DialogueNodeOld ENCOUNTER_WORK = new DialogueNodeOld("Reindeer Overseer", "", true) {
-		private static final long serialVersionUID = 1L;
+	public static final DialogueNode ENCOUNTER_WORK = new DialogueNode("Reindeer Overseer", "", true) {
 
 		@Override
 		public String getContent() {
@@ -468,12 +471,11 @@ public class ReindeerOverseerDialogue {
 		}
 	};
 	
-	public static final DialogueNodeOld ENCOUNTER_WORK_FINISHED = new DialogueNodeOld("Reindeer Overseer", "", true) {
-		private static final long serialVersionUID = 1L;
+	public static final DialogueNode ENCOUNTER_WORK_FINISHED = new DialogueNode("Reindeer Overseer", "", true) {
 		
 		@Override
-		public int getMinutesPassed() {
-			return 60 * 4;
+		public int getSecondsPassed() {
+			return 60 * 4*60;
 		}
 		
 		@Override
@@ -500,8 +502,7 @@ public class ReindeerOverseerDialogue {
 		}
 	};
 	
-	public static final DialogueNodeOld AFTER_SEX = new DialogueNodeOld("Reindeer Overseer", "", true) {
-		private static final long serialVersionUID = 1L;
+	public static final DialogueNode AFTER_SEX = new DialogueNode("Reindeer Overseer", "", true) {
 
 		@Override
 		public String getContent() {

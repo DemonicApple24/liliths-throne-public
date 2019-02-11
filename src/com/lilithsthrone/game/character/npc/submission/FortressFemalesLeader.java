@@ -2,7 +2,6 @@ package com.lilithsthrone.game.character.npc.submission;
 
 import java.time.Month;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -13,6 +12,7 @@ import com.lilithsthrone.game.Game;
 import com.lilithsthrone.game.character.CharacterImportSetting;
 import com.lilithsthrone.game.character.GameCharacter;
 import com.lilithsthrone.game.character.attributes.Attribute;
+import com.lilithsthrone.game.character.body.CoverableArea;
 import com.lilithsthrone.game.character.body.Covering;
 import com.lilithsthrone.game.character.body.types.BodyCoveringType;
 import com.lilithsthrone.game.character.body.types.HornType;
@@ -49,7 +49,7 @@ import com.lilithsthrone.game.character.persona.SexualOrientation;
 import com.lilithsthrone.game.character.race.RaceStage;
 import com.lilithsthrone.game.character.race.Subspecies;
 import com.lilithsthrone.game.combat.Attack;
-import com.lilithsthrone.game.dialogue.DialogueNodeOld;
+import com.lilithsthrone.game.dialogue.DialogueNode;
 import com.lilithsthrone.game.dialogue.places.submission.impFortress.ImpFortressDialogue;
 import com.lilithsthrone.game.dialogue.responses.Response;
 import com.lilithsthrone.game.dialogue.utils.UtilText;
@@ -58,10 +58,6 @@ import com.lilithsthrone.game.inventory.InventorySlot;
 import com.lilithsthrone.game.inventory.clothing.AbstractClothing;
 import com.lilithsthrone.game.inventory.clothing.AbstractClothingType;
 import com.lilithsthrone.game.inventory.clothing.ClothingType;
-import com.lilithsthrone.game.inventory.enchanting.ItemEffect;
-import com.lilithsthrone.game.inventory.enchanting.ItemEffectType;
-import com.lilithsthrone.game.inventory.enchanting.TFModifier;
-import com.lilithsthrone.game.inventory.enchanting.TFPotency;
 import com.lilithsthrone.game.inventory.item.AbstractItemType;
 import com.lilithsthrone.game.inventory.item.ItemType;
 import com.lilithsthrone.game.sex.Sex;
@@ -85,7 +81,7 @@ public class FortressFemalesLeader extends NPC {
 	
 	public FortressFemalesLeader(boolean isImported) {
 		super(isImported,
-				new NameTriplet("Hyorlyix", "Hyorlyss", "Hyorlyss"),
+				new NameTriplet("Hyorlyix", "Hyorlyss", "Hyorlyss"), "Loviennemartu",
 				"The leader of one of Submission's imp fortresses, [npc.name] has a loyal following of female imps, who love nothing more than to join [npc.herHim] in having dominant sex with those who oppose their ruler, 'The Dark Siren'...",
 				22, Month.JANUARY, 11,
 				20, Gender.F_V_B_FEMALE, Subspecies.DEMON, RaceStage.GREATER, new CharacterInventory(10), WorldType.IMP_FORTRESS_FEMALES, PlaceType.FORTRESS_FEMALES_KEEP, true);
@@ -198,12 +194,7 @@ public class FortressFemalesLeader extends NPC {
 		// Anus settings and modifiers
 		
 		// Penis:
-//		this.setPenisVirgin(false);
-//		this.setPenisGirth(PenisGirth.THREE_THICK);
-//		this.setPenisSize(8);
-//		this.setTesticleSize(TesticleSize.THREE_LARGE);
-//		this.setPenisCumStorage(250);
-//		this.fillCumToMaxStorage();
+		// n/a
 		
 		// Vagina:
 		this.setVaginaVirgin(false);
@@ -234,7 +225,7 @@ public class FortressFemalesLeader extends NPC {
 		if(addAccessories) {
 			this.equipClothingFromNowhere(AbstractClothingType.generateClothing(ClothingType.FINGER_RING, Colour.CLOTHING_GOLD, false), true, this);
 			this.equipClothingFromNowhere(AbstractClothingType.generateClothing(ClothingType.WRIST_BANGLE, Colour.CLOTHING_GOLD, false), true, this);
-			this.equipClothingFromNowhere(AbstractClothingType.generateClothing(ClothingType.ANKLE_BRACELET, Colour.CLOTHING_GOLD, false), true, this);
+			this.equipClothingFromNowhere(AbstractClothingType.generateClothing("innoxia_ankle_anklet", Colour.CLOTHING_GOLD, false), true, this);
 			
 			this.setPiercedEar(true);
 			this.equipClothingFromNowhere(AbstractClothingType.generateClothing(ClothingType.PIERCING_EAR_HOOPS, Colour.CLOTHING_GOLD, false), true, this);
@@ -263,8 +254,19 @@ public class FortressFemalesLeader extends NPC {
 	}
 	
 	@Override
-	public DialogueNodeOld getEncounterDialogue() {
+	public DialogueNode getEncounterDialogue() {
 		return null;
+	}
+	
+	public void equipStrapon() {
+		try {
+			if(this.getClothingInSlot(InventorySlot.GROIN)!=null) {
+				this.unequipClothingIntoVoid(this.getClothingInSlot(InventorySlot.GROIN), true, this);
+			}
+			this.displaceClothingForAccess(CoverableArea.PENIS);
+			this.equipClothingFromNowhere(AbstractClothingType.generateClothing(ClothingType.BDSM_PENIS_STRAPON, Colour.CLOTHING_PINK_LIGHT, false), true, this);
+		} catch(Exception ex) {
+		}
 	}
 
 	public boolean isAbleToEquipButtPlug(GameCharacter target) {
@@ -283,7 +285,7 @@ public class FortressFemalesLeader extends NPC {
 		}
 		
 		if(Sex.getPostSexDialogue().equals(ImpFortressDialogue.KEEP_AFTER_SEX_DEFEAT)) {
-			if(Sex.getAllParticipants().contains(ImpFortressDialogue.getMainCompanion())) {
+			if(ImpFortressDialogue.getMainCompanion()!=null && Sex.getAllParticipants().contains(ImpFortressDialogue.getMainCompanion())) {
 				Main.game.getTextEndStringBuilder().append(UtilText.parseFromXMLFile("places/submission/fortress"+ImpFortressDialogue.getDialogueEncounterId(), "KEEP_AFTER_SEX_DEFEAT_WITH_COMPANION", ImpFortressDialogue.getAllCharacters()));
 			} else {
 				Main.game.getTextEndStringBuilder().append(UtilText.parseFromXMLFile("places/submission/fortress"+ImpFortressDialogue.getDialogueEncounterId(), "KEEP_AFTER_SEX_DEFEAT", ImpFortressDialogue.getAllCharacters()));
@@ -293,27 +295,6 @@ public class FortressFemalesLeader extends NPC {
 			}
 			Main.game.getPlayer().setLocation(WorldType.SUBMISSION, PlaceType.SUBMISSION_IMP_FORTRESS_FEMALES);
 		}
-		
-		if(Sex.getPostSexDialogue().equals(ImpFortressDialogue.KEEP_AFTER_SEX_DEFEAT)) {
-			List<ItemEffect> effects = Util.newArrayListOfValues(
-					new ItemEffect(ItemEffectType.CLOTHING, TFModifier.CLOTHING_SEALING, TFModifier.ARCANE_BOOST, TFPotency.MINOR_DRAIN, 0),
-					new ItemEffect(ItemEffectType.CLOTHING, TFModifier.TF_MOD_FETISH_BEHAVIOUR, TFModifier.TF_MOD_FETISH_SUBMISSIVE, TFPotency.MAJOR_BOOST, 0),
-					new ItemEffect(ItemEffectType.CLOTHING, TFModifier.TF_MOD_FETISH_BEHAVIOUR, TFModifier.TF_MOD_FETISH_MASTURBATION, TFPotency.MAJOR_BOOST, 0),
-					new ItemEffect(ItemEffectType.CLOTHING, TFModifier.TF_MOD_FETISH_BEHAVIOUR, TFModifier.TF_MOD_FETISH_EXHIBITIONIST, TFPotency.MAJOR_BOOST, 0),
-					new ItemEffect(ItemEffectType.CLOTHING, TFModifier.TF_MOD_FETISH_BODY_PART, TFModifier.TF_ASS, TFPotency.BOOST, 0));
-			
-			if(isAbleToEquipButtPlug(Main.game.getPlayer())) {
-				AbstractClothing buttPlug = AbstractClothingType.generateClothing(ClothingType.getClothingTypeFromId("innoxia_buttPlugs_butt_plug_heart"), Colour.CLOTHING_SILVER, Colour.CLOTHING_PINK_LIGHT, Colour.CLOTHING_PINK_LIGHT, effects);
-				buttPlug.setName(UtilText.parse(this,"[npc.NamePos] 'Public Playtoy' Butt plug"));
-				Main.game.getPlayer().equipClothingFromNowhere(buttPlug, true, this);
-			}
-			
-			if(Sex.getAllParticipants().contains(ImpFortressDialogue.getMainCompanion()) && isAbleToEquipButtPlug(ImpFortressDialogue.getMainCompanion())) {
-				AbstractClothing buttPlug = AbstractClothingType.generateClothing(ClothingType.getClothingTypeFromId("innoxia_buttPlugs_butt_plug_heart"), Colour.CLOTHING_SILVER, Colour.CLOTHING_PERIWINKLE, Colour.CLOTHING_PERIWINKLE, effects);
-				buttPlug.setName(UtilText.parse(this,"[npc.NamePos] 'Public Playtoy' Butt plug"));
-				ImpFortressDialogue.getMainCompanion().equipClothingFromNowhere(buttPlug, true, this);
-			}
-		}
 	}
 	
 	@Override
@@ -322,6 +303,11 @@ public class FortressFemalesLeader extends NPC {
 	}
 	
 	// Combat:
+	
+	@Override
+	public int getEscapeChance() {
+		return 0;
+	}
 
 	public Attack attackType() {
 		

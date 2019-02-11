@@ -1,6 +1,8 @@
 package com.lilithsthrone.game.character.npc.dominion;
 
 import java.time.Month;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -39,7 +41,7 @@ import com.lilithsthrone.game.character.persona.PersonalityWeight;
 import com.lilithsthrone.game.character.persona.SexualOrientation;
 import com.lilithsthrone.game.character.race.RaceStage;
 import com.lilithsthrone.game.character.race.Subspecies;
-import com.lilithsthrone.game.dialogue.DialogueNodeOld;
+import com.lilithsthrone.game.dialogue.DialogueNode;
 import com.lilithsthrone.game.inventory.AbstractCoreItem;
 import com.lilithsthrone.game.inventory.CharacterInventory;
 import com.lilithsthrone.game.inventory.ItemTag;
@@ -66,7 +68,7 @@ public class Finch extends NPC {
 	}
 	
 	public Finch(boolean isImported) {
-		super(isImported, new NameTriplet("Finch"),
+		super(isImported, new NameTriplet("Finch"), "Moreno",
 				"Finch is the manager of Slaver Alley's 'Slave Administration' building."
 						+ " Although he acts friendly enough, you can't help but wonder if his disarming disposition is just for show."
 						+ " After all, would the manager of Dominion's 'Slave Administration' really have got to that position just by being nice?",
@@ -175,7 +177,7 @@ public class Finch extends NPC {
 		
 		// Penis:
 		this.setPenisVirgin(false);
-		this.setPenisGirth(PenisGirth.ZERO_SLENDER);
+		this.setPenisGirth(PenisGirth.ONE_THIN);
 		this.setPenisSize(3);
 		this.setTesticleSize(TesticleSize.ONE_TINY);
 		// Leave cum as normal value
@@ -216,29 +218,43 @@ public class Finch extends NPC {
 			this.addClothing(AbstractClothingType.generateClothing(ClothingType.NECK_SLAVE_COLLAR, false), false);
 		}
 		
+		List<AbstractClothing> clothingToSell = new ArrayList<>();
+		
 		for(AbstractClothingType clothing : ClothingType.getAllClothing()) {
-			try {
-				if(clothing!=null && clothing.getItemTags().contains(ItemTag.SOLD_BY_FINCH)) {
-					for(int i = 0; i<Util.random.nextInt(3)+1; i++) {
-						this.addClothing(AbstractClothingType.generateClothing(clothing, false), false);
-					}
-					if(clothing.getRarity()==Rarity.COMMON) {
-						for(int i = 0; i<Util.random.nextInt(2); i++) {
-							if(Math.random()<0.66f) {
-								this.addClothing(AbstractClothingType.generateRareClothing(clothing), false);
-							} else {
-								this.addClothing(AbstractClothingType.generateClothingWithEnchantment(clothing), false);
-							}
-						}
-					}
-				}
-			} catch(Exception ex) {
-				ex.printStackTrace();
+			if(clothing.getItemTags().contains(ItemTag.SOLD_BY_FINCH)) {
+				clothingToSell.add(AbstractClothingType.generateClothing(clothing, false));
 			}
 		}
 		
-		for(AbstractClothing clothing : this.getAllClothingInInventory()) {
-			clothing.setEnchantmentKnown(true);
+		addEnchantedClothing(clothingToSell);
+		
+		for(AbstractClothing c : clothingToSell) {
+			this.addClothing(c, false);
+		}
+	}
+	
+
+	/**
+	 * Adds four uncommon clothing items to the list, and two rare items.
+	 */
+	private void addEnchantedClothing(List<AbstractClothing> clothingList) {
+		List<AbstractClothing> generatedClothing = new ArrayList<>();
+
+		for(AbstractClothing clothing : clothingList) {
+			if(clothing.getRarity()==Rarity.COMMON) {
+				for(int i = 0; i<Util.random.nextInt(2); i++) {
+					if(Math.random()<0.66f) {
+						generatedClothing.add(AbstractClothingType.generateRareClothing(clothing.getClothingType()));
+					} else {
+						generatedClothing.add(AbstractClothingType.generateClothingWithEnchantment(clothing.getClothingType()));
+					}
+				}
+			}
+		}
+
+		for(AbstractClothing c : generatedClothing) {
+			c.setEnchantmentKnown(this, true);
+			clothingList.add(c);
 		}
 	}
 	
@@ -247,7 +263,7 @@ public class Finch extends NPC {
 	}
 	
 	@Override
-	public DialogueNodeOld getEncounterDialogue() {
+	public DialogueNode getEncounterDialogue() {
 		return null;
 	}
 

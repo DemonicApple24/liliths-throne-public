@@ -16,7 +16,8 @@ import com.lilithsthrone.game.sex.SexAreaOrifice;
 import com.lilithsthrone.game.sex.SexAreaPenetration;
 import com.lilithsthrone.game.sex.SexPace;
 import com.lilithsthrone.game.sex.SexParticipantType;
-import com.lilithsthrone.game.sex.SexPositionSlot;
+import com.lilithsthrone.game.sex.positions.SexSlot;
+import com.lilithsthrone.game.sex.positions.SexSlotBipeds;
 import com.lilithsthrone.game.sex.sexActions.SexAction;
 import com.lilithsthrone.game.sex.sexActions.SexActionCategory;
 import com.lilithsthrone.game.sex.sexActions.SexActionLimitation;
@@ -44,12 +45,12 @@ public class DoggyStyle {
 		@Override
 		public boolean isBaseRequirementsMet() {
 			return Sex.isDom(Sex.getCharacterPerformingAction())
-					&& (Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS
-						|| Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS_SECOND
-						|| Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS_THIRD
-						|| Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS_FOURTH)
-					&& (Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())==SexPositionSlot.DOGGY_BEHIND
-						|| Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())==SexPositionSlot.DOGGY_BEHIND_SECOND);
+					&& (Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS
+						|| Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS_SECOND
+						|| Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS_THIRD
+						|| Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS_FOURTH)
+					&& (Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())==SexSlotBipeds.DOGGY_BEHIND
+						|| Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())==SexSlotBipeds.DOGGY_BEHIND_SECOND);
 		}
 		
 		@Override
@@ -201,34 +202,34 @@ public class DoggyStyle {
 		@Override
 		public boolean isBaseRequirementsMet() {
 			boolean suitableSlot = false;
-			if(Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())==SexPositionSlot.DOGGY_BEHIND) {
-				if(Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS) {
-					suitableSlot = Sex.getCharacterInPosition(SexPositionSlot.DOGGY_SD_HUMPING)==null;
+			if(Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())==SexSlotBipeds.DOGGY_BEHIND) {
+				if(Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS) {
+					suitableSlot = Sex.getCharacterInPosition(SexSlotBipeds.DOGGY_SD_HUMPING)==null;
 					
-				} else if(Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS_SECOND) {
-					suitableSlot = Sex.getCharacterInPosition(SexPositionSlot.DOGGY_SD_HUMPING_SECOND)==null
-							&& (Sex.getCharacterInPosition(SexPositionSlot.DOGGY_BEHIND_SECOND)==null || Sex.getCharacterInPosition(SexPositionSlot.DOGGY_ON_ALL_FOURS_THIRD)!=null);
+				} else if(Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS_SECOND) {
+					suitableSlot = Sex.getCharacterInPosition(SexSlotBipeds.DOGGY_SD_HUMPING_SECOND)==null
+							&& (Sex.getCharacterInPosition(SexSlotBipeds.DOGGY_BEHIND_SECOND)==null || Sex.getCharacterInPosition(SexSlotBipeds.DOGGY_ON_ALL_FOURS_THIRD)!=null);
 					
-				} else if(Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS_THIRD
-						|| Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS_FOURTH) {
-					suitableSlot = Sex.getCharacterInPosition(SexPositionSlot.DOGGY_BEHIND_SECOND)==null;
+				} else if(Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS_THIRD
+						|| Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS_FOURTH) {
+					suitableSlot = Sex.getCharacterInPosition(SexSlotBipeds.DOGGY_BEHIND_SECOND)==null;
 				}
 				
-			} else if(Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())==SexPositionSlot.DOGGY_BEHIND_SECOND) {
-				if(Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS_SECOND) {
-					suitableSlot = Sex.getCharacterInPosition(SexPositionSlot.DOGGY_SD_HUMPING_SECOND)==null
-							&& Sex.getCharacterInPosition(SexPositionSlot.DOGGY_ON_ALL_FOURS_THIRD)==null;
+			} else if(Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())==SexSlotBipeds.DOGGY_BEHIND_SECOND) {
+				if(Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS_SECOND) {
+					suitableSlot = Sex.getCharacterInPosition(SexSlotBipeds.DOGGY_SD_HUMPING_SECOND)==null
+							&& Sex.getCharacterInPosition(SexSlotBipeds.DOGGY_ON_ALL_FOURS_THIRD)==null;
 					
-				} else if(Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS_THIRD
-						|| Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS_FOURTH) {
+				} else if(Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS_THIRD
+						|| Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS_FOURTH) {
 					suitableSlot = true;;
 				}
 				
-			} else if(Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())==SexPositionSlot.DOGGY_SD_HUMPING) {
-				suitableSlot = Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS;
+			} else if(Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())==SexSlotBipeds.DOGGY_SD_HUMPING) {
+				suitableSlot = Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS;
 				
-			}else if(Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())==SexPositionSlot.DOGGY_SD_HUMPING_SECOND) {
-				suitableSlot = Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexPositionSlot.DOGGY_ON_ALL_FOURS_SECOND;
+			}else if(Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())==SexSlotBipeds.DOGGY_SD_HUMPING_SECOND) {
+				suitableSlot = Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this))==SexSlotBipeds.DOGGY_ON_ALL_FOURS_SECOND;
 			}
 			
 			return Sex.getSexPace(Sex.getCharacterPerformingAction())!=SexPace.SUB_RESISTING
@@ -727,14 +728,12 @@ public class DoggyStyle {
 			ArousalIncrease.ONE_MINIMUM,
 			CorruptionLevel.ONE_VANILLA,
 			null,
-			SexParticipantType.NORMAL,
-			SexPace.SUB_EAGER) {
+			SexParticipantType.NORMAL) {
 		
 		@Override
 		public boolean isBaseRequirementsMet() {
-			SexPositionSlot targetedSlot = Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this));
-			return !Sex.isDom(Sex.getCharacterPerformingAction())
-					&& (targetedSlot==SexPositionSlot.DOGGY_BEHIND || targetedSlot==SexPositionSlot.DOGGY_BEHIND_ORAL);
+			SexSlot targetedSlot = Sex.getSexPositionSlot(Sex.getCharacterTargetedForSexAction(this));
+			return Sex.getSexPace(Sex.getCharacterPerformingAction())!=SexPace.SUB_RESISTING && (targetedSlot==SexSlotBipeds.DOGGY_BEHIND || targetedSlot==SexSlotBipeds.DOGGY_BEHIND_ORAL);
 		}
 		
 		@Override
@@ -754,13 +753,10 @@ public class DoggyStyle {
 		@Override
 		public String getDescription() {
 			return UtilText.returnStringAtRandom(
-					"Turning [npc.her] head back, [npc.name] [npc.verb(look)] up at [npc2.name] and [npc.verb(bite)] [npc.her] [npc.lip], putting on [npc.her] most seductive look as [npc2.she] [npc2.verb(grin)] down at [npc.herHim].",
-					
+					"Turning [npc.her] head back, [npc.name] [npc.verb(look)] up at [npc2.name] and [npc.verb(bite)] [npc.her] [npc.lip], putting on [npc.her] most seductive look as [npc.she] [npc.verb(entice)] [npc2.herHim] to use [npc.herHim].",
 					"Looking back at [npc2.name] as [npc2.she] [npc2.verb(tower)] over [npc.her] [npc.ass+], [npc.name] [npc.verb(put)] on a seductive look,"
-							+ " smiling happily as [npc.she] [npc.verb(see)] [npc2.herHim] gazing hungrily down at [npc.her] body.",
-					
-					"[npc.Name] [npc.verb(turn)] [npc.her] head and [npc.verb(bite)] [npc.her] [npc.lip] at [npc2.name], trying to look as seductive as possible as [npc2.she] grins down at [npc.herHim].",
-					
+							+ " [npc.moaning] in delight as [npc.she] [npc.verb(entice)] [npc2.herHim] into using [npc.her] body.",
+					"[npc.Name] [npc.verb(turn)] [npc.her] head and [npc.verb(bite)] [npc.her] [npc.lip] at [npc2.name], doing [npc.her] best to look as seductive as possible.",
 					"Looking back, [npc.name] [npc.verb(put)] on a seductive look for [npc2.name], feeling extremely pleased with [npc.herself] as [npc.she] [npc.verb(see)] [npc2.herHim] gazing hungrily down at [npc.herHim] in return.");
 		}
 	};

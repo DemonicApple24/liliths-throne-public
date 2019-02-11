@@ -43,7 +43,8 @@ import com.lilithsthrone.game.character.race.RaceStage;
 import com.lilithsthrone.game.character.race.Subspecies;
 import com.lilithsthrone.game.combat.Attack;
 import com.lilithsthrone.game.combat.DamageType;
-import com.lilithsthrone.game.dialogue.DialogueNodeOld;
+import com.lilithsthrone.game.dialogue.DialogueNode;
+import com.lilithsthrone.game.dialogue.places.submission.impFortress.ImpCitadelDialogue;
 import com.lilithsthrone.game.dialogue.places.submission.impFortress.ImpFortressDialogue;
 import com.lilithsthrone.game.dialogue.responses.Response;
 import com.lilithsthrone.game.dialogue.utils.UtilText;
@@ -52,10 +53,6 @@ import com.lilithsthrone.game.inventory.InventorySlot;
 import com.lilithsthrone.game.inventory.clothing.AbstractClothing;
 import com.lilithsthrone.game.inventory.clothing.AbstractClothingType;
 import com.lilithsthrone.game.inventory.clothing.ClothingType;
-import com.lilithsthrone.game.inventory.enchanting.ItemEffect;
-import com.lilithsthrone.game.inventory.enchanting.ItemEffectType;
-import com.lilithsthrone.game.inventory.enchanting.TFModifier;
-import com.lilithsthrone.game.inventory.enchanting.TFPotency;
 import com.lilithsthrone.game.inventory.item.AbstractItemType;
 import com.lilithsthrone.game.inventory.item.ItemType;
 import com.lilithsthrone.game.inventory.weapon.AbstractWeaponType;
@@ -64,8 +61,8 @@ import com.lilithsthrone.game.sex.Sex;
 import com.lilithsthrone.game.sex.SexAreaOrifice;
 import com.lilithsthrone.game.sex.SexAreaPenetration;
 import com.lilithsthrone.game.sex.SexParticipantType;
-import com.lilithsthrone.game.sex.SexPositionSlot;
 import com.lilithsthrone.game.sex.SexType;
+import com.lilithsthrone.game.sex.positions.SexSlotBipeds;
 import com.lilithsthrone.game.sex.sexActions.SexActionType;
 import com.lilithsthrone.game.sex.sexActions.submission.FortressMalesLeaderSA;
 import com.lilithsthrone.main.Main;
@@ -88,7 +85,7 @@ public class FortressMalesLeader extends NPC {
 	
 	public FortressMalesLeader(boolean isImported) {
 		super(isImported,
-				new NameTriplet("Jhortrax", "Jhortriss", "Jhortriss"),
+				new NameTriplet("Jhortrax", "Jhortriss", "Jhortriss"), "Liannamartu",
 				"The leader of one of Submission's imp fortresses, [npc.name] and [npc.her] all-male gang of imps take great pleasure in breeding anyone foolish enough to oppose their ruler, 'The Dark Siren'...",
 				65, Month.SEPTEMBER, 19,
 				20, Gender.M_P_MALE, Subspecies.DEMON, RaceStage.GREATER, new CharacterInventory(10), WorldType.IMP_FORTRESS_MALES, PlaceType.FORTRESS_MALES_KEEP, true);
@@ -105,6 +102,9 @@ public class FortressMalesLeader extends NPC {
 			setStartingBody(true);
 			equipClothing(true, true, true, true);
 		}
+		if(Main.isVersionOlderThan(Game.loadingVersion, "0.2.12")) {
+			this.setAttribute(Attribute.MAJOR_ARCANE, 35);
+		}
 	}
 	
 	@Override
@@ -114,7 +114,7 @@ public class FortressMalesLeader extends NPC {
 		
 		if(setPersona) {
 			this.setAttribute(Attribute.MAJOR_PHYSIQUE, 50);
-			this.setAttribute(Attribute.MAJOR_ARCANE, 10);
+			this.setAttribute(Attribute.MAJOR_ARCANE, 35);
 			this.setAttribute(Attribute.MAJOR_CORRUPTION, 100);
 			this.setAttribute(Attribute.VIRILITY, 100);
 			this.setAttribute(Attribute.DAMAGE_MELEE_WEAPON, 75);
@@ -263,7 +263,7 @@ public class FortressMalesLeader extends NPC {
 	}
 	
 	@Override
-	public DialogueNodeOld getEncounterDialogue() {
+	public DialogueNode getEncounterDialogue() {
 		return null;
 	}
 
@@ -284,7 +284,7 @@ public class FortressMalesLeader extends NPC {
 	public void endSex() {
 		
 		if(Sex.getPostSexDialogue().equals(ImpFortressDialogue.KEEP_AFTER_SEX_DEFEAT)) {
-			if(Sex.getAllParticipants().contains(ImpFortressDialogue.getMainCompanion())) {
+			if(ImpFortressDialogue.getMainCompanion()!=null && Sex.getAllParticipants().contains(ImpFortressDialogue.getMainCompanion())) {
 				Main.game.getTextEndStringBuilder().append(UtilText.parseFromXMLFile("places/submission/fortress"+ImpFortressDialogue.getDialogueEncounterId(), "KEEP_AFTER_SEX_DEFEAT_WITH_COMPANION", ImpFortressDialogue.getAllCharacters()));
 			} else {
 				Main.game.getTextEndStringBuilder().append(UtilText.parseFromXMLFile("places/submission/fortress"+ImpFortressDialogue.getDialogueEncounterId(), "KEEP_AFTER_SEX_DEFEAT", ImpFortressDialogue.getAllCharacters()));
@@ -293,37 +293,6 @@ public class FortressMalesLeader extends NPC {
 				ImpFortressDialogue.resetGuards(Main.game.getPlayer().getWorldLocation());
 			}
 			Main.game.getPlayer().setLocation(WorldType.SUBMISSION, PlaceType.SUBMISSION_IMP_FORTRESS_MALES);
-		}
-		
-		if(Sex.getPostSexDialogue().equals(ImpFortressDialogue.KEEP_AFTER_SEX_DEFEAT)) {
-			List<ItemEffect> effects = Util.newArrayListOfValues(
-					new ItemEffect(ItemEffectType.CLOTHING, TFModifier.CLOTHING_SEALING, TFModifier.ARCANE_BOOST, TFPotency.MINOR_DRAIN, 0),
-					new ItemEffect(ItemEffectType.CLOTHING, TFModifier.TF_MOD_FETISH_BEHAVIOUR, TFModifier.TF_MOD_FETISH_PREGNANCY, TFPotency.MAJOR_BOOST, 0),
-					new ItemEffect(ItemEffectType.CLOTHING, TFModifier.TF_ASS, TFModifier.TF_MOD_SIZE_SECONDARY, TFPotency.BOOST, HipSize.FIVE_VERY_WIDE.getValue()),
-					new ItemEffect(ItemEffectType.CLOTHING, TFModifier.CLOTHING_ATTRIBUTE, TFModifier.FERTILITY, TFPotency.MAJOR_BOOST, 0),
-					new ItemEffect(ItemEffectType.CLOTHING, TFModifier.CLOTHING_ATTRIBUTE, TFModifier.FERTILITY, TFPotency.MAJOR_BOOST, 0));
-			
-			if(isAbleToEquipThong(Main.game.getPlayer())) {
-				AbstractClothing thong = AbstractClothingType.generateClothing(ClothingType.GROIN_CROTCHLESS_THONG, Colour.CLOTHING_RED_DARK, effects);
-				thong.setName(UtilText.parse(this,"[npc.NamePos] 'Breeder' Crotchless thong"));
-				Main.game.getPlayer().equipClothingFromNowhere(thong, true, this);
-			}
-			if(isAbleToEquipDildo(Main.game.getPlayer())) {
-				AbstractClothing dildo = AbstractClothingType.generateClothing(ClothingType.GROIN_CROTCHLESS_THONG, Colour.CLOTHING_BLACK,
-						Util.newArrayListOfValues(new ItemEffect(ItemEffectType.CLOTHING, TFModifier.CLOTHING_SEALING, TFModifier.ARCANE_BOOST, TFPotency.MINOR_BOOST, 0)));
-				Main.game.getPlayer().equipClothingFromNowhere(dildo, true, this);
-			}
-			
-			if(Sex.getAllParticipants().contains(ImpFortressDialogue.getMainCompanion()) && isAbleToEquipThong(ImpFortressDialogue.getMainCompanion())) {
-				AbstractClothing thong = AbstractClothingType.generateClothing(ClothingType.GROIN_CROTCHLESS_THONG, Colour.CLOTHING_PINK_LIGHT, effects);
-				thong.setName(UtilText.parse(this,"[npc.NamePos] 'Breeder' Crotchless thong"));
-				ImpFortressDialogue.getMainCompanion().equipClothingFromNowhere(thong, true, this);
-			}
-			if(isAbleToEquipDildo(ImpFortressDialogue.getMainCompanion())) {
-				AbstractClothing dildo = AbstractClothingType.generateClothing(ClothingType.GROIN_CROTCHLESS_THONG, Colour.CLOTHING_WHITE,
-						Util.newArrayListOfValues(new ItemEffect(ItemEffectType.CLOTHING, TFModifier.CLOTHING_SEALING, TFModifier.ARCANE_BOOST, TFPotency.MINOR_BOOST, 0)));
-				ImpFortressDialogue.getMainCompanion().equipClothingFromNowhere(dildo, true, this);
-			}
 		}
 	}
 	
@@ -339,10 +308,10 @@ public class FortressMalesLeader extends NPC {
 	
 	@Override
 	public GameCharacter getPreferredSexTarget() {
-		if(Sex.getLastUsedSexAction(Main.game.getFortressMalesLeader())!=null
+		if(Sex.getLastUsedSexAction(Main.game.getNpc(FortressMalesLeader.class))!=null
 				&& !FortressMalesLeaderSA.isBothTargetsUsed()
-				&& (Sex.getLastUsedSexAction(Main.game.getFortressMalesLeader()).getActionType()==SexActionType.ORGASM
-				|| Sex.getLastUsedSexAction(Main.game.getFortressMalesLeader()).getActionType()==SexActionType.PREPARE_FOR_PARTNER_ORGASM)) {
+				&& (Sex.getLastUsedSexAction(Main.game.getNpc(FortressMalesLeader.class)).getActionType()==SexActionType.ORGASM
+				|| Sex.getLastUsedSexAction(Main.game.getNpc(FortressMalesLeader.class)).getActionType()==SexActionType.PREPARE_FOR_PARTNER_ORGASM)) {
 			return FortressMalesLeaderSA.getBreedingTarget();
 		}
 		return null;
@@ -350,7 +319,7 @@ public class FortressMalesLeader extends NPC {
 
 	@Override
 	public SexType getForeplayPreference(GameCharacter target) {
-		if(Sex.getSexPositionSlot(this)==SexPositionSlot.MISSIONARY_KNEELING_BETWEEN_LEGS && this.hasPenis()) {
+		if(Sex.getSexPositionSlot(this)==SexSlotBipeds.MISSIONARY_KNEELING_BETWEEN_LEGS && this.hasPenis()) {
 			return new SexType(SexParticipantType.NORMAL, SexAreaPenetration.PENIS, SexAreaOrifice.VAGINA);
 		}
 		
@@ -359,7 +328,7 @@ public class FortressMalesLeader extends NPC {
 
 	@Override
 	public SexType getMainSexPreference(GameCharacter target) {
-		if(Sex.getSexPositionSlot(this)==SexPositionSlot.MISSIONARY_KNEELING_BETWEEN_LEGS && this.hasPenis()) {
+		if(Sex.getSexPositionSlot(this)==SexSlotBipeds.MISSIONARY_KNEELING_BETWEEN_LEGS && this.hasPenis()) {
 			return new SexType(SexParticipantType.NORMAL, SexAreaPenetration.PENIS, SexAreaOrifice.VAGINA);
 		}
 
@@ -372,6 +341,11 @@ public class FortressMalesLeader extends NPC {
 	}
 	
 	// Combat:
+	
+	@Override
+	public int getEscapeChance() {
+		return 0;
+	}
 
 	public Attack attackType() {
 		Map<Attack, Integer> attackWeightingMap = new HashMap<>();
@@ -398,6 +372,24 @@ public class FortressMalesLeader extends NPC {
 
 	@Override
 	public Response endCombat(boolean applyEffects, boolean victory) {
+		
+		//This is the fight at the citadel:
+		if(Main.game.getPlayer().getWorldLocation()==WorldType.IMP_FORTRESS_DEMON) {
+			if (victory) {
+				return new Response("", "", ImpCitadelDialogue.KEEP_DEMONS_DEFEATED);
+				
+			} else {
+				return new Response("", "", ImpCitadelDialogue.KEEP_AFTER_COMBAT_DEFEAT) {
+					@Override
+					public void effects() {
+						Main.game.getTextStartStringBuilder().append(
+								UtilText.parseFromXMLFile("places/submission/impCitadel"+ImpCitadelDialogue.getDialogueEncounterId(), "KEEP_CHALLENGE_LEADER_DEFEAT", ImpCitadelDialogue.getAllCharacters()));
+					}
+				};
+			}
+		}
+		
+		// This is the fight in his fortress:
 		if (victory) {
 			return new Response("", "", ImpFortressDialogue.KEEP_AFTER_COMBAT_VICTORY) {
 				@Override

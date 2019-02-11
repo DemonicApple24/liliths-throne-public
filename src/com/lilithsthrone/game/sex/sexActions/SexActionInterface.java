@@ -1,6 +1,7 @@
 package com.lilithsthrone.game.sex.sexActions;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -10,18 +11,28 @@ import com.lilithsthrone.game.PropertyValue;
 import com.lilithsthrone.game.character.GameCharacter;
 import com.lilithsthrone.game.character.attributes.CorruptionLevel;
 import com.lilithsthrone.game.character.body.CoverableArea;
+import com.lilithsthrone.game.character.body.valueEnums.CumProduction;
+import com.lilithsthrone.game.character.body.valueEnums.FluidModifier;
 import com.lilithsthrone.game.character.fetishes.Fetish;
 import com.lilithsthrone.game.dialogue.responses.Response;
 import com.lilithsthrone.game.dialogue.responses.ResponseEffectsOnly;
 import com.lilithsthrone.game.dialogue.utils.UtilText;
+import com.lilithsthrone.game.inventory.InventorySlot;
+import com.lilithsthrone.game.inventory.clothing.AbstractClothing;
+import com.lilithsthrone.game.inventory.enchanting.ItemEffect;
+import com.lilithsthrone.game.inventory.enchanting.TFModifier;
 import com.lilithsthrone.game.sex.ArousalIncrease;
+import com.lilithsthrone.game.sex.CondomFailure;
+import com.lilithsthrone.game.sex.LubricationType;
 import com.lilithsthrone.game.sex.Sex;
 import com.lilithsthrone.game.sex.SexAreaInterface;
 import com.lilithsthrone.game.sex.SexAreaOrifice;
 import com.lilithsthrone.game.sex.SexAreaPenetration;
+import com.lilithsthrone.game.sex.SexControl;
 import com.lilithsthrone.game.sex.SexPace;
 import com.lilithsthrone.game.sex.SexParticipantType;
-import com.lilithsthrone.game.sex.SexPositionSlot;
+import com.lilithsthrone.game.sex.SexType;
+import com.lilithsthrone.game.sex.positions.SexSlotBipeds;
 import com.lilithsthrone.game.sex.sexActions.baseActionsMisc.GenericActions;
 import com.lilithsthrone.main.Main;
 import com.lilithsthrone.utils.Colour;
@@ -29,7 +40,7 @@ import com.lilithsthrone.utils.Util;
 
 /**
  * @since 0.1.0
- * @version 0.2.7
+ * @version 0.3.1
  * @author Innoxia
  */
 public interface SexActionInterface {
@@ -38,7 +49,7 @@ public interface SexActionInterface {
 	 * This is a method to support old sex actions. Do not set the return value of this to anything other than null.
 	 * @return
 	 */
-	public default SexActionLimitation getLimitation() {
+	public default SexActionLimitation getLimitation() {//TODO remove this
 		return null;
 	}
 	
@@ -79,6 +90,16 @@ public interface SexActionInterface {
 		return list;
 	}
 	
+	public default List<SexAreaInterface> getPerformingCharacterAreas() {
+		List<SexAreaInterface> list = new ArrayList<>();
+		for(SexAreaInterface sArea : getSexAreaInteractions().keySet()) {
+			if(sArea!=null) {
+				list.add(sArea);
+			}
+		}
+		return list;
+	}
+	
 	public default List<SexAreaOrifice> getTargetedCharacterOrifices() {
 		List<SexAreaOrifice> list = new ArrayList<>();
 		for(SexAreaInterface sArea : getSexAreaInteractions().values()) {
@@ -94,6 +115,16 @@ public interface SexActionInterface {
 		for(SexAreaInterface sArea : getSexAreaInteractions().values()) {
 			if(sArea!=null && sArea.isPenetration()) {
 				list.add((SexAreaPenetration)sArea);
+			}
+		}
+		return list;
+	}
+	
+	public default List<SexAreaInterface> getTargetedCharacterAreas() {
+		List<SexAreaInterface> list = new ArrayList<>();
+		for(SexAreaInterface sArea : getSexAreaInteractions().values()) {
+			if(sArea!=null) {
+				list.add(sArea);
 			}
 		}
 		return list;
@@ -164,7 +195,11 @@ public interface SexActionInterface {
 		}
 		
 		if(getActionType()==SexActionType.POSITIONING) {
-			// Ongoing penetrations are reset in Sex.setSexManager()
+			// For reference, ongoing penetrations are reset in Sex.setSexManager()
+			
+			if(!Sex.getCharacterPerformingAction().isPlayer()) { // Ban further positioning actions (this is reset when moving from foreplay to main sex, or when orgasming):
+				Sex.addCharacterBannedFromPositioning(Sex.getCharacterPerformingAction());
+			}
 		}
 		
 		if(getActionType()==SexActionType.STOP_ONGOING) {
@@ -212,6 +247,12 @@ public interface SexActionInterface {
 	public default String applyEffectsString(){
 		return "";
 	}
+
+	/**
+	 * These effects are applied after everything else, so it is a safe place to put ongoing action stops or the like.
+	 */
+	public default void applyEndEffects(){
+	}
 	
 	public default boolean isBaseRequirementsMet() {
 		return true;
@@ -219,12 +260,11 @@ public interface SexActionInterface {
 	
 	public default boolean isBasicCoreRequirementsMet() {
 		return (this.getSexPace()==null
-					|| (this.getSexPace().isDom() && Sex.getSexPace(Sex.getCharacterPerformingAction()).isDom())
-					|| (!this.getSexPace().isDom() && !Sex.getSexPace(Sex.getCharacterPerformingAction()).isDom()))
-				&& (this.getActionType()!=SexActionType.STOP_ONGOING // Can only stop if dom or equal control
-					|| Sex.getSexPace(Sex.getCharacterPerformingAction()).isDom()
-					|| Sex.isSubHasEqualControl())
-				&& (Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())!=SexPositionSlot.MISC_WATCHING
+					|| (this.getSexPace().isDom() == Sex.getSexPace(Sex.getCharacterPerformingAction()).isDom()))
+				&& (this.getActionType()!=SexActionType.STOP_ONGOING // Can only stop non-self ongoing penetrations if full control
+					|| this.getParticipantType()==SexParticipantType.SELF
+					|| Sex.getSexControl(Sex.getCharacterPerformingAction())==SexControl.FULL)
+				&& (Sex.getSexPositionSlot(Sex.getCharacterPerformingAction())!=SexSlotBipeds.MISC_WATCHING // Cannot switch positions as spectator
 					|| this.getActionType()!=SexActionType.POSITIONING); 
 	}
 	
@@ -255,7 +295,7 @@ public interface SexActionInterface {
 		boolean canAccessSelfParts = true;
 		for(SexAreaOrifice orifice : this.getPerformingCharacterOrifices()) {
 			if(!orifice.isFree(performer)) {
-				if(!Sex.isDom(performer) && !Sex.isSubHasEqualControl()) { // Doms and full control subs can always free up their own parts.
+				if(Sex.getSexControl(performer)!=SexControl.FULL) { // Doms and full control subs can always free up their own parts.
 					for(GameCharacter character : Sex.getCharactersHavingOngoingActionWith(performer, orifice)) {
 						if(!character.equals(performer) && Sex.isDom(character)) { // It's a non-self action with a dom:
 							canAccessSelfParts = false;
@@ -266,7 +306,7 @@ public interface SexActionInterface {
 		}
 		for(SexAreaPenetration penetration : this.getPerformingCharacterPenetrations()) {
 			if(!penetration.isFree(performer)) {
-				if(!Sex.isDom(performer) && !Sex.isSubHasEqualControl()) { // Doms and full control subs can always free up their own parts.
+				if(Sex.getSexControl(performer)!=SexControl.FULL) { // Doms and full control subs can always free up their own parts.
 					for(GameCharacter character : Sex.getCharactersHavingOngoingActionWith(performer, penetration)) {
 						if(!character.equals(performer) && Sex.isDom(character)) { // It's a non-self action with a dom:
 							canAccessSelfParts = false;
@@ -411,7 +451,7 @@ public interface SexActionInterface {
 
 					// The sub stopping penetration actions (not including self-penetration actions) is only available if the sub has equal control:
 					if(this.getParticipantType()!=SexParticipantType.SELF) {
-						if(!Sex.isSubHasEqualControl() && !Sex.isDom(Sex.getCharacterPerformingAction())) {
+						if(Sex.getSexControl(Sex.getCharacterPerformingAction())!=SexControl.FULL) {
 							return null;
 						}
 					}
@@ -429,13 +469,14 @@ public interface SexActionInterface {
 				if(!this.getSexAreaInteractions().isEmpty()) {
 					if(this.getParticipantType() != SexParticipantType.SELF) { // This is a penetrative action between both partners:
 						
-						boolean canStartPenetration = Sex.isSubHasEqualControl() || Sex.isDom(Sex.getCharacterPerformingAction()) || !Sex.isDom(Sex.getTargetedPartner(Sex.getCharacterPerformingAction()));
+						boolean canStartPenetration = Sex.getSexControl(Sex.getCharacterPerformingAction())==SexControl.FULL
+								|| Sex.isDom(Sex.getCharacterPerformingAction()) == Sex.isDom(Sex.getTargetedPartner(Sex.getCharacterPerformingAction()));
 						
 						if(!canStartPenetration
 								&& Sex.getSexPace(Sex.getTargetedPartner(Sex.getCharacterPerformingAction()))!=SexPace.DOM_ROUGH
-								&& Sex.getCharacterPerformingAction().isPlayer()) {
+								&& Sex.getSexControl(Sex.getCharacterPerformingAction())==SexControl.ONGOING_PLUS_LIMITED_PENETRATIONS) {
 							if(this.getTargetedCharacterOrifices().isEmpty()) {
-								canStartPenetration = true; // Can start submissive penetrations (getting penetrated, not doing the penetrating) when player is a sub with restricted control.
+								canStartPenetration = true; // Can start submissive penetrations (getting penetrated, not doing the penetrating) when character is a sub with restricted control.
 							} else {
 								boolean virginityTakingPenetration = false;
 								for(SexAreaPenetration pen :this.getPerformingCharacterPenetrations()) {
@@ -461,6 +502,11 @@ public interface SexActionInterface {
 								return null;
 							}
 							break;
+						case NIPPLE_CROTCH:
+							if(!Sex.getCharacterPerformingAction().isBreastCrotchFuckableNipplePenetration()) {
+								return null;
+							}
+							break;
 						default:
 							break;
 					}
@@ -479,6 +525,11 @@ public interface SexActionInterface {
 					switch(sArea){
 						case NIPPLE:
 							if(!Sex.getCharacterTargetedForSexAction(this).isBreastFuckableNipplePenetration()) {
+								return null;
+							}
+							break;
+						case NIPPLE_CROTCH:
+							if(!Sex.getCharacterTargetedForSexAction(this).isBreastCrotchFuckableNipplePenetration()) {
 								return null;
 							}
 							break;
@@ -738,6 +789,7 @@ public interface SexActionInterface {
 					return getActionType();
 				}
 			};
+			
 		} else {
 			return new ResponseEffectsOnly(
 					this.endsSex()
@@ -929,8 +981,41 @@ public interface SexActionInterface {
 		
 		return false;
 	}
-	
+
+	static List<SexAreaInterface> prohibitedNonBipedFingerSelfAreas = Util.newArrayListOfValues(
+			SexAreaPenetration.CLIT,
+			SexAreaPenetration.PENIS,
+			SexAreaOrifice.ANUS,
+			SexAreaOrifice.ASS,
+			SexAreaOrifice.URETHRA_PENIS,
+			SexAreaOrifice.URETHRA_VAGINA,
+			SexAreaOrifice.VAGINA);
 	public default boolean isPhysicallyPossible() {
+		if(this.getParticipantType()==SexParticipantType.SELF) {
+			if(!Sex.getCharacterPerformingAction().getLegConfiguration().isBipedalPositionedGenitals()) {
+				if(this.getSexAreaInteractions().keySet().contains(SexAreaPenetration.FINGER)) {
+					if(!Collections.disjoint(prohibitedNonBipedFingerSelfAreas, this.getSexAreaInteractions().values())) {
+						return false;
+					}
+				}
+				if(this.getSexAreaInteractions().keySet().contains(SexAreaPenetration.TAIL)
+						|| this.getSexAreaInteractions().keySet().contains(SexAreaPenetration.CLIT)
+						|| this.getSexAreaInteractions().keySet().contains(SexAreaPenetration.PENIS)) {
+					if(!Collections.disjoint(SexActionPresets.upperHalf, this.getSexAreaInteractions().values())) {
+						return false;
+					}
+				}
+			}
+			if(!Sex.getCharacterPerformingAction().getLegConfiguration().isBipedalPositionedCrotchBoobs()) {
+				if(this.getSexAreaInteractions().keySet().contains(SexAreaPenetration.FINGER)) {
+					if(this.getSexAreaInteractions().values().contains(SexAreaOrifice.BREAST_CROTCH)
+							|| this.getSexAreaInteractions().values().contains(SexAreaOrifice.NIPPLE_CROTCH)) {
+						return false;
+					}
+				}
+			}
+		}
+		
 		for(SexAreaInterface sArea : this.getSexAreaInteractions().keySet()) {
 			if(!performPhysicallyBlockedCheck(sArea, Sex.getCharacterPerformingAction())) {
 				return false;
@@ -977,14 +1062,16 @@ public interface SexActionInterface {
 		if(sArea != null && sArea.isOrifice()) {
 			switch((SexAreaOrifice) sArea){
 				case ANUS:
-					break;
 				case ASS:
-					break;
 				case MOUTH:
-					break;
 				case NIPPLE:
-					break;
 				case BREAST:
+					break;
+				case NIPPLE_CROTCH:
+				case BREAST_CROTCH:
+					if(!character.hasBreastsCrotch()) {
+						return false;
+					}
 					break;
 				case URETHRA_PENIS:
 					if(!character.hasPenis() || !character.isUrethraFuckable()) {
@@ -1011,9 +1098,63 @@ public interface SexActionInterface {
 	public default List<SexAreaInterface> getAreasCummedIn(GameCharacter cumProvider, GameCharacter cumTarget) { return null; }
 
 	public default List<CoverableArea> getAreasCummedOn(GameCharacter cumProvider, GameCharacter cumTarget) { return null; }
-	
-	public default boolean ignoreCondom(GameCharacter condomWearer) {
-		return false;
+
+	// This is in the SexAction Interface, as it might be necessary in some special actions to override this to prevent condom breaks.
+	public default CondomFailure getCondomFailure(GameCharacter condomWearer, GameCharacter cumTarget) {
+		AbstractClothing condom = condomWearer.getClothingInSlot(InventorySlot.PENIS);
+		if(condom==null || !condom.isCondom()) {
+			return CondomFailure.NONE;
+		}
+		
+		int cumQuantity = condomWearer.getPenisRawOrgasmCumQuantity();
+		
+		for(ItemEffect effect : condom.getEffects()) {
+			if(effect.getPrimaryModifier()==TFModifier.CLOTHING_CONDOM) {
+				switch(effect.getPotency()) {
+					case MINOR_BOOST:
+						if(cumQuantity>CumProduction.FIVE_HUGE.getMaximumValue()) {
+							return CondomFailure.CUM_OVERLOAD;
+						}
+						break;
+					case BOOST:
+						if(cumQuantity>CumProduction.SIX_EXTREME.getMaximumValue()) {
+							return CondomFailure.CUM_OVERLOAD;
+						}
+						break;
+					case MAJOR_BOOST:
+						break;
+					case MAJOR_DRAIN:
+					case DRAIN:
+					case MINOR_DRAIN:
+						return CondomFailure.SABOTAGED;
+				}
+			}
+		}
+		
+		if(cumQuantity>0 && condomWearer.getCumModifiers().contains(FluidModifier.MINERAL_OIL)) {
+			return CondomFailure.MINERAL_OIL_SELF_CUM;
+		}
+		
+		//TODO saliva
+		
+		if(Sex.getOrificesBeingPenetratedBy(condomWearer, SexAreaPenetration.PENIS, cumTarget).contains(SexAreaOrifice.URETHRA_PENIS)
+				&& Sex.getWetAreas(cumTarget).get(SexAreaOrifice.URETHRA_PENIS).get(cumTarget).contains(LubricationType.CUM)
+				&& cumTarget.getCumModifiers().contains(FluidModifier.MINERAL_OIL)) {
+			return CondomFailure.MINERAL_OIL_CUM;
+		}
+		
+		if(Sex.getOrificesBeingPenetratedBy(condomWearer, SexAreaPenetration.PENIS, cumTarget).contains(SexAreaOrifice.VAGINA)
+				&& cumTarget.getGirlcum().getFluidModifiers().contains(FluidModifier.MINERAL_OIL)) {
+			return CondomFailure.MINERAL_OIL_GIRLCUM;
+		}
+		
+		if(Sex.getOrificesBeingPenetratedBy(condomWearer, SexAreaPenetration.PENIS, cumTarget).contains(SexAreaOrifice.NIPPLE)
+				&& cumTarget.getBreastRawStoredMilkValue()>0
+				&& cumTarget.getMilk().getFluidModifiers().contains(FluidModifier.MINERAL_OIL)) {
+			return CondomFailure.MINERAL_OIL_MILK;
+		}
+		
+		return CondomFailure.NONE;
 	}
 	
 	public default List<Fetish> getFetishesFromPenetrationAndOrificeTypes(
@@ -1023,274 +1164,25 @@ public interface SexActionInterface {
 			SexAreaInterface targetedArea,
 			boolean characterPerformingActionFetishes) {
 		
-		List<Fetish> associatedFetishes = new ArrayList<>();
-		List<Fetish> associatedFetishesPartner = new ArrayList<>();
-
+		SexType type = new SexType(this.getParticipantType(), performingArea, targetedArea);
+		
 		// Self areas:
-		
-		if(performingArea!=null && performingArea.isPenetration()) {
-			switch((SexAreaPenetration)performingArea) {
-				case CLIT:
-					associatedFetishes.add(Fetish.FETISH_VAGINAL_RECEIVING);
-					break;
-				case FINGER:
-					break;
-				case PENIS:
-					associatedFetishes.add(Fetish.FETISH_PENIS_GIVING);
-					break;
-				case TAIL:
-					break;
-				case TENTACLE:
-					break;
-				case FOOT:
-					associatedFetishes.add(Fetish.FETISH_FOOT_GIVING);
-					break;
-				case TONGUE:
-					associatedFetishes.add(Fetish.FETISH_ORAL_GIVING);
-					break;
-			}
-		}
-		if(performingArea!=null && performingArea.isOrifice()) {
-			switch((SexAreaOrifice)performingArea) {
-				case ANUS:
-					associatedFetishes.add(Fetish.FETISH_ANAL_RECEIVING);
-					break;
-				case ASS:
-					associatedFetishes.add(Fetish.FETISH_ANAL_RECEIVING);
-					break;
-				case BREAST:
-					associatedFetishes.add(Fetish.FETISH_BREASTS_SELF);
-					break;
-				case MOUTH:
-					associatedFetishes.add(Fetish.FETISH_ORAL_GIVING);
-					break;
-				case NIPPLE:
-					if(characterTarget.getBreastRawStoredMilkValue()>0) {
-						associatedFetishes.add(Fetish.FETISH_LACTATION_SELF);
-					}
-					associatedFetishes.add(Fetish.FETISH_BREASTS_SELF);
-					break;
-				case THIGHS:
-					associatedFetishes.add(Fetish.FETISH_STRUTTER);
-					break;
-				case URETHRA_PENIS:
-					associatedFetishes.add(Fetish.FETISH_PENIS_GIVING);
-					break;
-				case URETHRA_VAGINA:
-					associatedFetishes.add(Fetish.FETISH_VAGINAL_RECEIVING);
-					break;
-				case VAGINA:
-					if(characterTarget.hasPenisIgnoreDildo()
-							&& characterTarget.getPenisRawStoredCumValue()>0
-							&& targetedArea==SexAreaPenetration.PENIS
-							&& this.getActionType()==SexActionType.ORGASM) {
-						associatedFetishes.add(Fetish.FETISH_PREGNANCY);
-					}
-					associatedFetishes.add(Fetish.FETISH_VAGINAL_RECEIVING);
-					break;
-			}
-		}
-		
-		// Targeted areas:
-		
-		if(targetedArea!=null && targetedArea.isPenetration()) {
-			switch((SexAreaPenetration)targetedArea) {
-				case CLIT:
-					associatedFetishes.add(Fetish.FETISH_VAGINAL_GIVING);
-					break;
-				case FINGER:
-					break;
-				case PENIS:
-					associatedFetishes.add(Fetish.FETISH_PENIS_RECEIVING);
-					break;
-				case TAIL:
-					break;
-				case TENTACLE:
-					break;
-				case FOOT:
-					associatedFetishes.add(Fetish.FETISH_FOOT_RECEIVING);
-					break;
-				case TONGUE:
-					associatedFetishes.add(Fetish.FETISH_ORAL_RECEIVING);
-					break;
-			}
-		}
-		if(targetedArea!=null && targetedArea.isOrifice()) {
-			switch((SexAreaOrifice)targetedArea) {
-				case ANUS:
-					associatedFetishes.add(Fetish.FETISH_ANAL_GIVING);
-					break;
-				case ASS:
-					associatedFetishes.add(Fetish.FETISH_ANAL_GIVING);
-					break;
-				case BREAST:
-					associatedFetishes.add(Fetish.FETISH_BREASTS_OTHERS);
-					break;
-				case MOUTH:
-					associatedFetishes.add(Fetish.FETISH_ORAL_RECEIVING);
-					break;
-				case NIPPLE:
-					if(characterTarget.getBreastRawStoredMilkValue()>0) {
-						associatedFetishes.add(Fetish.FETISH_LACTATION_OTHERS);
-					}
-					associatedFetishes.add(Fetish.FETISH_BREASTS_OTHERS);
-					break;
-				case THIGHS:
-					associatedFetishes.add(Fetish.FETISH_LEG_LOVER);
-					break;
-				case URETHRA_PENIS:
-					associatedFetishes.add(Fetish.FETISH_PENIS_RECEIVING);
-					break;
-				case URETHRA_VAGINA:
-					associatedFetishes.add(Fetish.FETISH_VAGINAL_GIVING);
-					break;
-				case VAGINA:
-					if(characterPerformingAction.hasPenisIgnoreDildo() 
-							&& characterPerformingAction.getPenisRawStoredCumValue()>0
-							&& performingArea==SexAreaPenetration.PENIS
-							&& this.getActionType()==SexActionType.ORGASM) {
-						associatedFetishes.add(Fetish.FETISH_IMPREGNATION);
-					}
-					associatedFetishes.add(Fetish.FETISH_VAGINAL_GIVING);
-					break;
-			}
-		}
-		
-		// Check for masturbation:
-		if(!associatedFetishes.contains(Fetish.FETISH_MASTURBATION) && characterPerformingAction.equals(characterTarget)) {
-			associatedFetishes.add(Fetish.FETISH_MASTURBATION);
-		}
+		List<Fetish> associatedFetishes = new ArrayList<>(type.getRelatedFetishes(characterPerformingAction, characterTarget, this.getActionType().isPenetratingOption(), this.getActionType()==SexActionType.ORGASM));
 		
 		// Add opposite fetishes for partner:
-		for(Fetish f : associatedFetishes) {
-			switch(f) {
-				case FETISH_ANAL_GIVING:
-					associatedFetishesPartner.add(Fetish.FETISH_ANAL_RECEIVING);
-					break;
-				case FETISH_ANAL_RECEIVING:
-					associatedFetishesPartner.add(Fetish.FETISH_ANAL_GIVING);
-					break;
-				case FETISH_BIMBO:
-					break;
-				case FETISH_BREASTS_OTHERS:
-					associatedFetishesPartner.add(Fetish.FETISH_BREASTS_SELF);
-					break;
-				case FETISH_BREASTS_SELF:
-					associatedFetishesPartner.add(Fetish.FETISH_BREASTS_OTHERS);
-					break;
-				case FETISH_LACTATION_OTHERS:
-					associatedFetishesPartner.add(Fetish.FETISH_LACTATION_SELF);
-					break;
-				case FETISH_LACTATION_SELF:
-					associatedFetishesPartner.add(Fetish.FETISH_LACTATION_OTHERS);
-					break;
-				case FETISH_BREEDER:
-					break;
-				case FETISH_CROSS_DRESSER:
-					break;
-				case FETISH_CUM_ADDICT:
-					associatedFetishesPartner.add(Fetish.FETISH_CUM_STUD);
-					break;
-				case FETISH_CUM_STUD:
-					associatedFetishesPartner.add(Fetish.FETISH_CUM_ADDICT);
-					break;
-				case FETISH_DEFLOWERING:
-					break;
-				case FETISH_DENIAL:
-					associatedFetishesPartner.add(Fetish.FETISH_DENIAL_SELF);
-					break;
-				case FETISH_DENIAL_SELF:
-					associatedFetishesPartner.add(Fetish.FETISH_DENIAL);
-					break;
-				case FETISH_DOMINANT:
-					associatedFetishesPartner.add(Fetish.FETISH_SUBMISSIVE);
-					break;
-				case FETISH_EXHIBITIONIST:
-					break;
-				case FETISH_IMPREGNATION:
-					associatedFetishesPartner.add(Fetish.FETISH_PREGNANCY);
-					break;
-				case FETISH_INCEST:
-					associatedFetishesPartner.add(Fetish.FETISH_INCEST);
-					break;
-				case FETISH_LEG_LOVER:
-					associatedFetishesPartner.add(Fetish.FETISH_STRUTTER);
-					break;
-				case FETISH_LUSTY_MAIDEN:
-					break;
-				case FETISH_MASOCHIST:
-					associatedFetishesPartner.add(Fetish.FETISH_SADIST);
-					break;
-				case FETISH_MASTURBATION:
-					associatedFetishesPartner.add(Fetish.FETISH_MASTURBATION);
-					break;
-				case FETISH_NON_CON_DOM:
-					associatedFetishesPartner.add(Fetish.FETISH_NON_CON_SUB);
-					break;
-				case FETISH_NON_CON_SUB:
-					associatedFetishesPartner.add(Fetish.FETISH_NON_CON_DOM);
-					break;
-				case FETISH_ORAL_GIVING:
-					associatedFetishesPartner.add(Fetish.FETISH_ORAL_RECEIVING);
-					break;
-				case FETISH_ORAL_RECEIVING:
-					associatedFetishesPartner.add(Fetish.FETISH_ORAL_GIVING);
-					break;
-				case FETISH_PREGNANCY:
-					associatedFetishesPartner.add(Fetish.FETISH_IMPREGNATION);
-					break;
-				case FETISH_PURE_VIRGIN:
-					break;
-				case FETISH_SADIST:
-					associatedFetishesPartner.add(Fetish.FETISH_MASOCHIST);
-					break;
-				case FETISH_SADOMASOCHIST:
-					break;
-				case FETISH_STRUTTER:
-					associatedFetishesPartner.add(Fetish.FETISH_LEG_LOVER);
-					break;
-				case FETISH_SUBMISSIVE:
-					associatedFetishesPartner.add(Fetish.FETISH_DOMINANT);
-					break;
-				case FETISH_SWITCH:
-					break;
-				case FETISH_TRANSFORMATION_GIVING:
-					associatedFetishesPartner.add(Fetish.FETISH_TRANSFORMATION_RECEIVING);
-					break;
-				case FETISH_TRANSFORMATION_RECEIVING:
-					associatedFetishesPartner.add(Fetish.FETISH_TRANSFORMATION_GIVING);
-					break;
-				case FETISH_VAGINAL_GIVING:
-					associatedFetishesPartner.add(Fetish.FETISH_VAGINAL_RECEIVING);
-					break;
-				case FETISH_VAGINAL_RECEIVING:
-					associatedFetishesPartner.add(Fetish.FETISH_VAGINAL_GIVING);
-					break;
-				case FETISH_VOYEURIST:
-					break;
-				case FETISH_KINK_GIVING:
-					break;
-				case FETISH_KINK_RECEIVING:
-					break;
-				case FETISH_PENIS_GIVING:
-					associatedFetishesPartner.add(Fetish.FETISH_PENIS_RECEIVING);
-					break;
-				case FETISH_PENIS_RECEIVING:
-					associatedFetishesPartner.add(Fetish.FETISH_PENIS_GIVING);
-					break;
-				case FETISH_FOOT_GIVING:
-					associatedFetishesPartner.add(Fetish.FETISH_FOOT_RECEIVING);
-					break;
-				case FETISH_FOOT_RECEIVING:
-					associatedFetishesPartner.add(Fetish.FETISH_FOOT_GIVING);
-					break;
-			}
-		}
+		List<Fetish> associatedFetishesPartner = new ArrayList<>(type.getOppositeFetishes(characterPerformingAction, characterTarget, this.getActionType().isPenetratingOption(), this.getActionType()==SexActionType.ORGASM));
 		
 		if(characterPerformingActionFetishes) {
 			return associatedFetishes;
 		} else {
 			return associatedFetishesPartner;
 		}
+	}
+	
+	/**
+	 * @return A SexType object which is representative of this SexAction. Will only represent the first area found in both performing and targeted areas, due to SexType limitations.
+	 */
+	public default SexType getAsSexType() {
+		return new SexType(this.getParticipantType(), getPerformingCharacterAreas().isEmpty()?null:getPerformingCharacterAreas().get(0), getTargetedCharacterAreas().isEmpty()?null:getTargetedCharacterAreas().get(0));
 	}
 }

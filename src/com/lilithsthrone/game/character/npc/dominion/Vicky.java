@@ -2,8 +2,8 @@ package com.lilithsthrone.game.character.npc.dominion;
 
 import java.time.Month;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -49,9 +49,10 @@ import com.lilithsthrone.game.character.race.Subspecies;
 import com.lilithsthrone.game.combat.Spell;
 import com.lilithsthrone.game.combat.SpellSchool;
 import com.lilithsthrone.game.dialogue.DialogueFlagValue;
-import com.lilithsthrone.game.dialogue.DialogueNodeOld;
+import com.lilithsthrone.game.dialogue.DialogueNode;
 import com.lilithsthrone.game.dialogue.utils.UtilText;
 import com.lilithsthrone.game.inventory.AbstractCoreItem;
+import com.lilithsthrone.game.inventory.AbstractCoreType;
 import com.lilithsthrone.game.inventory.CharacterInventory;
 import com.lilithsthrone.game.inventory.ItemTag;
 import com.lilithsthrone.game.inventory.clothing.AbstractClothingType;
@@ -69,8 +70,10 @@ import com.lilithsthrone.game.inventory.weapon.WeaponType;
 import com.lilithsthrone.game.sex.SexAreaOrifice;
 import com.lilithsthrone.game.sex.SexAreaPenetration;
 import com.lilithsthrone.game.sex.SexParticipantType;
-import com.lilithsthrone.game.sex.SexPositionSlot;
 import com.lilithsthrone.game.sex.SexType;
+import com.lilithsthrone.game.sex.positions.AbstractSexPosition;
+import com.lilithsthrone.game.sex.positions.SexSlot;
+import com.lilithsthrone.game.sex.positions.SexSlotBipeds;
 import com.lilithsthrone.main.Main;
 import com.lilithsthrone.utils.Colour;
 import com.lilithsthrone.utils.Util;
@@ -95,8 +98,7 @@ public class Vicky extends NPC {
 			ItemType.RACE_INGREDIENT_COW_MORPH,
 			ItemType.RACE_INGREDIENT_ALLIGATOR_MORPH,
 			ItemType.RACE_INGREDIENT_REINDEER_MORPH,
-			ItemType.RACE_INGREDIENT_HUMAN,
-			ItemType.RACE_INGREDIENT_DEMON};
+			ItemType.RACE_INGREDIENT_HUMAN};
 	
 	private static List<AbstractItemType> availableSpellBooks = new ArrayList<>();
 	
@@ -149,6 +151,7 @@ public class Vicky extends NPC {
 					
 				case WITCH_CHARM:
 				case WITCH_SEAL:
+				case DARK_SIREN_SIRENS_CALL:
 					break;
 			}
 		}
@@ -159,7 +162,7 @@ public class Vicky extends NPC {
 	}
 	
 	public Vicky(boolean isImported) {
-		super(isImported, new NameTriplet("Vicky"),
+		super(isImported, new NameTriplet("Vicky"), "Haugen",
 				"Vicky is the owner of the shop 'Arcane Arts'. Her manner of staring at anyone who enters her shop is quite unsettling, and you feel as though she's ready to pounce on you at any moment...",
 				37, Month.MAY, 26,
 				10, Gender.F_P_V_B_FUTANARI,
@@ -178,7 +181,7 @@ public class Vicky extends NPC {
 		if(Main.isVersionOlderThan(Game.loadingVersion, "0.2.10.5")) {
 			resetBodyAfterVersion_2_10_5();
 		}
-		if(Main.isVersionOlderThan(Game.loadingVersion, "0.3")) {
+		if(Main.isVersionOlderThan(Game.loadingVersion, "0.2.12")) {
 			setStartingBody(false);
 		}
 	}
@@ -264,7 +267,7 @@ public class Vicky extends NPC {
 		
 		// Penis:
 		this.setPenisVirgin(false);
-		this.setPenisSize(14);
+		this.setPenisSize(9);
 		this.setTesticleSize(TesticleSize.THREE_LARGE);
 		this.setPenisCumStorage(65);
 		this.fillCumToMaxStorage();
@@ -311,40 +314,64 @@ public class Vicky extends NPC {
 	@Override
 	public void dailyReset() {
 		clearNonEquippedInventory();
+
+		int requiredRoomForMiscItems = ItemType.getEssences().size()+SpellSchool.values().length+availableSpellBooks.size()+10;
 		
-		for(AbstractWeaponType wt : WeaponType.allweapons) {
+		List<AbstractCoreType> types = new ArrayList<>();
+		
+		for(AbstractWeaponType wt : WeaponType.getAllweapons()) {
 			if(wt.getItemTags().contains(ItemTag.SOLD_BY_VICKY)) {
-				for(int i=0; i<1+Util.random.nextInt(3); i++){
-					this.addWeapon(AbstractWeaponType.generateWeapon(wt), false);
-				}
+				types.add(wt);
 			}
 		}
 		for(AbstractItemType item : ItemType.getAllItems()) {
 			if(item.getItemTags().contains(ItemTag.SOLD_BY_VICKY)) {
-				this.addItem(AbstractItemType.generateItem(item), false);
+				types.add(item);
 			}
 		}
 		for(AbstractClothingType clothing : ClothingType.getAllClothing()) {
 			try {
 				if(clothing!=null && clothing.getItemTags().contains(ItemTag.SOLD_BY_VICKY)) {
-					this.addClothing(AbstractClothingType.generateClothing(clothing, false), false);
+					types.add(clothing);
 				} 
 			} catch(Exception ex) {
 				ex.printStackTrace();
+			}
+		}
+		Collections.shuffle(types);
+		int count=0;
+		for(AbstractCoreType type : types) {
+			if(type instanceof AbstractWeaponType) {
+				for(int i=0; i<1+Util.random.nextInt(3); i++){
+					this.addWeapon(AbstractWeaponType.generateWeapon((AbstractWeaponType) type), false);
+				}
+				
+			} else if(type instanceof AbstractItemType) {
+				this.addItem(AbstractItemType.generateItem((AbstractItemType) type), false);
+				
+			} else if(type instanceof AbstractClothingType) {
+				this.addClothing(AbstractClothingType.generateClothing((AbstractClothingType) type, false), false);
+			}
+			count++;
+			if(count>=this.getMaximumInventorySpace()-requiredRoomForMiscItems) {
+				break;
 			}
 		}
 		
 		AbstractItem ingredient = AbstractItemType.generateItem(availableIngredients[Util.random.nextInt(availableIngredients.length)]);
 		TFModifier primaryMod = TFModifier.getTFRacialBodyPartsList().get(Util.random.nextInt(TFModifier.getTFRacialBodyPartsList().size()));
 		for(int i=0; i<10;i++) {
-			if(ingredient.getEnchantmentEffect().getEffectsDescription(primaryMod, TFModifier.NONE, TFPotency.MINOR_BOOST, 0, Main.game.getPlayer(), Main.game.getPlayer())!=null) {
-				AbstractItem potion = EnchantingUtils.craftItem(ingredient, Util.newArrayListOfValues(new ItemEffect(ingredient.getEnchantmentEffect(), primaryMod, TFModifier.NONE, TFPotency.MINOR_BOOST, 0)));
-				this.addItem(potion, false);
-				potion.setName(EnchantingUtils.getPotionName(ingredient, potion.getEffects()));
+			try {
+				if(ingredient.getEnchantmentEffect().getEffectsDescription(primaryMod, TFModifier.NONE, TFPotency.MINOR_BOOST, 0, Main.game.getPlayer(), Main.game.getPlayer())!=null) {
+					AbstractItem potion = EnchantingUtils.craftItem(ingredient, Util.newArrayListOfValues(new ItemEffect(ingredient.getEnchantmentEffect(), primaryMod, TFModifier.NONE, TFPotency.MINOR_BOOST, 0)));
+					this.addItem(potion, false);
+					potion.setName(EnchantingUtils.getPotionName(ingredient, potion.getEffects()));
+				}
+				
+				ingredient = AbstractItemType.generateItem(availableIngredients[Util.random.nextInt(availableIngredients.length)]);
+				primaryMod = TFModifier.getTFRacialBodyPartsList().get(Util.random.nextInt(TFModifier.getTFRacialBodyPartsList().size()));
+			} catch(Exception ex) {
 			}
-			
-			ingredient = AbstractItemType.generateItem(availableIngredients[Util.random.nextInt(availableIngredients.length)]);
-			primaryMod = TFModifier.getTFRacialBodyPartsList().get(Util.random.nextInt(TFModifier.getTFRacialBodyPartsList().size()));
 		}
 		
 		for(AbstractItemType itemType : availableSpellBooks) {
@@ -352,16 +379,12 @@ public class Vicky extends NPC {
 		}
 		
 		for(SpellSchool school : SpellSchool.values()) {
-			for(int i=0; i<10+Util.random.nextInt(20); i++) {
-				this.addItem(AbstractItemType.generateItem(ItemType.getSpellScrollType(school)), false);
-			}
+			this.addItem(AbstractItemType.generateItem(ItemType.getSpellScrollType(school)), 10+Util.random.nextInt(20));
 		}
 		
 		if(Main.game.getPlayer().hasQuest(QuestLine.SIDE_ENCHANTMENT_DISCOVERY)) {
 			for(AbstractItemType itemType : ItemType.getEssences()) {
-				for(int i=0;i<20+Util.random.nextInt(11);i++) {
-					this.addItem(AbstractItemType.generateItem(itemType), false);
-				}
+				this.addItem(AbstractItemType.generateItem(itemType), 20+Util.random.nextInt(11));
 			}
 		}
 	}
@@ -371,7 +394,7 @@ public class Vicky extends NPC {
 	}
 	
 	@Override
-	public DialogueNodeOld getEncounterDialogue() {
+	public DialogueNode getEncounterDialogue() {
 		return null;
 	}
 
@@ -426,12 +449,8 @@ public class Vicky extends NPC {
 	}
 	
 	@Override
-	public Set<SexPositionSlot> getSexPositionPreferences(GameCharacter target) {
-		sexPositionPreferences.clear();
-		
-		sexPositionPreferences.add(SexPositionSlot.MISSIONARY_DESK_DOM_VICKY);
-		
-		return sexPositionPreferences;
+	public boolean isHappyToBeInSlot(AbstractSexPosition position, SexSlot slot, GameCharacter target) {
+		return slot==SexSlotBipeds.MISSIONARY_DESK_DOM;
 	}
 
 	@Override
