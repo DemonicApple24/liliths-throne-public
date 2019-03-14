@@ -12,8 +12,8 @@ import org.w3c.dom.events.EventTarget;
 
 import com.lilithsthrone.controller.eventListeners.EnchantmentEventListener;
 import com.lilithsthrone.controller.eventListeners.InventorySelectedItemEventListener;
-import com.lilithsthrone.controller.eventListeners.tooltips.TooltipInventoryEventListener;
 import com.lilithsthrone.controller.eventListeners.tooltips.TooltipInformationEventListener;
+import com.lilithsthrone.controller.eventListeners.tooltips.TooltipInventoryEventListener;
 import com.lilithsthrone.game.Game;
 import com.lilithsthrone.game.Properties;
 import com.lilithsthrone.game.PropertyValue;
@@ -31,6 +31,7 @@ import com.lilithsthrone.game.character.body.Testicle;
 import com.lilithsthrone.game.character.body.types.AbstractArmType;
 import com.lilithsthrone.game.character.body.types.AbstractAssType;
 import com.lilithsthrone.game.character.body.types.AbstractBreastType;
+import com.lilithsthrone.game.character.body.types.AbstractEarType;
 import com.lilithsthrone.game.character.body.types.AbstractHornType;
 import com.lilithsthrone.game.character.body.types.AbstractLegType;
 import com.lilithsthrone.game.character.body.types.AntennaType;
@@ -60,7 +61,6 @@ import com.lilithsthrone.game.character.body.valueEnums.Capacity;
 import com.lilithsthrone.game.character.body.valueEnums.ClitorisSize;
 import com.lilithsthrone.game.character.body.valueEnums.CoveringModifier;
 import com.lilithsthrone.game.character.body.valueEnums.CoveringPattern;
-import com.lilithsthrone.game.character.body.valueEnums.CumProduction;
 import com.lilithsthrone.game.character.body.valueEnums.CupSize;
 import com.lilithsthrone.game.character.body.valueEnums.EyeShape;
 import com.lilithsthrone.game.character.body.valueEnums.Femininity;
@@ -121,7 +121,6 @@ import com.lilithsthrone.game.dialogue.DialogueFlagValue;
 import com.lilithsthrone.game.dialogue.DialogueNode;
 import com.lilithsthrone.game.dialogue.DialogueNodeType;
 import com.lilithsthrone.game.dialogue.OccupantManagementDialogue;
-import com.lilithsthrone.game.dialogue.places.dominion.CityPlaces;
 import com.lilithsthrone.game.dialogue.places.dominion.lilayashome.Library;
 import com.lilithsthrone.game.dialogue.places.dominion.lilayashome.LilayaHomeGeneric;
 import com.lilithsthrone.game.dialogue.places.dominion.shoppingArcade.SuccubisSecrets;
@@ -137,6 +136,7 @@ import com.lilithsthrone.game.dialogue.utils.EnchantmentDialogue;
 import com.lilithsthrone.game.dialogue.utils.GiftDialogue;
 import com.lilithsthrone.game.dialogue.utils.InventoryDialogue;
 import com.lilithsthrone.game.dialogue.utils.InventoryInteraction;
+import com.lilithsthrone.game.dialogue.utils.MapTravelType;
 import com.lilithsthrone.game.dialogue.utils.OptionsDialogue;
 import com.lilithsthrone.game.dialogue.utils.PhoneDialogue;
 import com.lilithsthrone.game.dialogue.utils.UtilText;
@@ -145,6 +145,7 @@ import com.lilithsthrone.game.inventory.ItemTag;
 import com.lilithsthrone.game.inventory.clothing.AbstractClothing;
 import com.lilithsthrone.game.inventory.clothing.AbstractClothingType;
 import com.lilithsthrone.game.inventory.clothing.ClothingType;
+import com.lilithsthrone.game.inventory.enchanting.AbstractItemEffectType;
 import com.lilithsthrone.game.inventory.enchanting.ItemEffect;
 import com.lilithsthrone.game.inventory.enchanting.LoadedEnchantment;
 import com.lilithsthrone.game.inventory.enchanting.TFEssence;
@@ -177,6 +178,8 @@ import com.lilithsthrone.rendering.Pattern;
 import com.lilithsthrone.rendering.RenderingEngine;
 import com.lilithsthrone.utils.Colour;
 import com.lilithsthrone.utils.ColourListPresets;
+import com.lilithsthrone.utils.Pathing;
+import com.lilithsthrone.utils.Units;
 import com.lilithsthrone.utils.Util;
 import com.lilithsthrone.utils.Util.Value;
 import com.lilithsthrone.world.Cell;
@@ -244,7 +247,7 @@ public class MainControllerInitMethod {
 					// Create file chooser for .jpg and .png images in the most recently used directory
 					FileChooser chooser = new FileChooser();
 					chooser.setTitle("Add Images");
-					chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Images", "*.jpg", "*.png"));
+					chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Images", "*.jpg", "*.png", "*.gif"));
 					if (lastOpened != null)
 						chooser.setInitialDirectory(lastOpened);
 
@@ -262,7 +265,10 @@ public class MainControllerInitMethod {
 				MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
 				MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
 				MainController.addEventListener(MainController.document, id, "mouseenter", new TooltipInformationEventListener().setInformation(
-						"Add custom artwork","Browse your own images and add them to the character."),false);
+						"Add custom artwork",
+						"Browse your own images and add them to the character."
+								+ " Please note that GIF animation files are limited to a <b>maximum of 10MB</b> in size, and if over 1MB, <b>may</b> cause [style.italicsBad(significant lag)], depending on your system."),
+						false);
 			}
 
 			if (character.hasArtwork()) {
@@ -345,7 +351,7 @@ public class MainControllerInitMethod {
 		
 		// -------------------- Debug menu -------------------- //
 		
-		if(Main.game.getCurrentDialogueNode().equals(DebugDialogue.SPAWN_MENU)) {
+		if(Main.game.getCurrentDialogueNode().equals(DebugDialogue.SPAWN_MENU) || Main.game.getCurrentDialogueNode().equals(DebugDialogue.ALL_ITEMS_VIEW)) {
 			id = "";
 			
 			for(AbstractClothingType clothingType : DebugDialogue.clothingTotal) {
@@ -709,225 +715,198 @@ public class MainControllerInitMethod {
 			
 	
 			// -------------------- Enchantments --------------------
-			
-			// Tooltips:
-			if (((EventTarget) MainController.document.getElementById("MOD_PRIMARY_ENCHANTING")) != null) {
 
-				EnchantmentEventListener el = new EnchantmentEventListener().setPrimaryModifier(TFModifier.NONE);
-				MainController.addEventListener(MainController.document, "MOD_PRIMARY_ENCHANTING", "click", el, false);
-				
-				MainController.addEventListener(MainController.document, "MOD_PRIMARY_ENCHANTING", "mousemove", MainController.moveTooltipListener, false);
-				MainController.addEventListener(MainController.document, "MOD_PRIMARY_ENCHANTING", "mouseleave", MainController.hideTooltipListener, false);
-				
-				TooltipInventoryEventListener el2 = new TooltipInventoryEventListener().setTFModifier(EnchantmentDialogue.getPrimaryMod());
-				MainController.addEventListener(MainController.document, "MOD_PRIMARY_ENCHANTING", "mouseenter", el2, false);
-			}
-			if (((EventTarget) MainController.document.getElementById("MOD_SECONDARY_ENCHANTING")) != null) {
+			if (Main.game.getCurrentDialogueNode() == EnchantmentDialogue.ENCHANTMENT_MENU) {
+				// Tooltips:
+				if (((EventTarget) MainController.document.getElementById("MOD_PRIMARY_ENCHANTING")) != null) {
 
-				EnchantmentEventListener el = new EnchantmentEventListener().setSecondaryModifier(TFModifier.NONE);
-				MainController.addEventListener(MainController.document, "MOD_SECONDARY_ENCHANTING", "click", el, false);
-				
-				MainController.addEventListener(MainController.document, "MOD_SECONDARY_ENCHANTING", "mousemove", MainController.moveTooltipListener, false);
-				MainController.addEventListener(MainController.document, "MOD_SECONDARY_ENCHANTING", "mouseleave", MainController.hideTooltipListener, false);
-				
-				TooltipInventoryEventListener el2 = new TooltipInventoryEventListener().setTFModifier(EnchantmentDialogue.getSecondaryMod());
-				MainController.addEventListener(MainController.document, "MOD_SECONDARY_ENCHANTING", "mouseenter", el2, false);
-			}
+					EnchantmentEventListener el = new EnchantmentEventListener().setPrimaryModifier(TFModifier.NONE);
+					MainController.addEventListener(MainController.document, "MOD_PRIMARY_ENCHANTING", "click", el, false);
 
-			for(TFPotency potency : TFPotency.values()) {
-				id = "POTENCY_"+potency;
-				if (((EventTarget) MainController.document.getElementById(id)) != null) {
-	
-					EnchantmentEventListener el = new EnchantmentEventListener().setPotency(potency);
-					MainController.addEventListener(MainController.document, id, "click", el, false);
-					
-					MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
-					MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
-					
-//					InventoryTooltipEventListener el2 = new InventoryTooltipEventListener().setTFPotency(potency);
-//					MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
-				}
-			}
-			for(int effectCount=0; effectCount<EnchantmentDialogue.getEffects().size(); effectCount++) {
-				id = "DELETE_EFFECT_"+effectCount;
-				
-				if (((EventTarget) MainController.document.getElementById(id)) != null) {
-					
-					EnchantmentEventListener el = new EnchantmentEventListener().removeEffect(effectCount);
-					MainController.addEventListener(MainController.document, id, "click", el, false);
-					
-					MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
-					MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+					MainController.addEventListener(MainController.document, "MOD_PRIMARY_ENCHANTING", "mousemove", MainController.moveTooltipListener, false);
+					MainController.addEventListener(MainController.document, "MOD_PRIMARY_ENCHANTING", "mouseleave", MainController.hideTooltipListener, false);
 
-					TooltipInformationEventListener el2 =  new TooltipInformationEventListener().setInformation("Delete Effect", "");
-					MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
+					TooltipInventoryEventListener el2 = new TooltipInventoryEventListener().setTFModifier(EnchantmentDialogue.getPrimaryMod());
+					MainController.addEventListener(MainController.document, "MOD_PRIMARY_ENCHANTING", "mouseenter", el2, false);
 				}
-			}
-			
-			id = "LIMIT_MINIMUM";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				if(EnchantmentDialogue.getLimit()>0) {
-					EnchantmentEventListener el = new EnchantmentEventListener().setLimit(0);
-					MainController.addEventListener(MainController.document, id, "click", el, false);
-				}
-				MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
-				MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
-				
-//				TooltipInformationEventListener el2 =  new TooltipInformationEventListener().setInformation((EnchantmentDialogue.getLimit()==0?"Minimum Limit Reached":"Limit Minimum"), "");
-//				MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
-			}
-			
-			id = "LIMIT_DECREASE_LARGE";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				if(EnchantmentDialogue.getLimit()>0) {
-					int decrement = Math.min(-1, -(EnchantmentDialogue.getIngredient().getEnchantmentEffect().getLimits(EnchantmentDialogue.getPrimaryMod(), EnchantmentDialogue.getSecondaryMod())/10));
-					EnchantmentEventListener el = new EnchantmentEventListener().setLimit(Math.max(0, EnchantmentDialogue.getLimit()+decrement));
-					MainController.addEventListener(MainController.document, id, "click", el, false);
-				}
-				MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
-				MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
-				
-//				TooltipInformationEventListener el2 =  new TooltipInformationEventListener().setInformation((EnchantmentDialogue.getLimit()==0?"Minimum Limit Reached":"Large Limit Decrease"), "");
-//				MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
-			}
-			
-			id = "LIMIT_DECREASE";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				if(EnchantmentDialogue.getLimit()>0) {
-					EnchantmentEventListener el = new EnchantmentEventListener().setLimit(EnchantmentDialogue.getLimit()-1);
-					MainController.addEventListener(MainController.document, id, "click", el, false);
-				}
-				MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
-				MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
-				
-//				TooltipInformationEventListener el2 =  new TooltipInformationEventListener().setInformation((EnchantmentDialogue.getLimit()==0?"Minimum Limit Reached":"Limit Decrease"), "");
-//				MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
-			}
-			
-			id = "LIMIT_INCREASE";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				if(EnchantmentDialogue.getLimit() < EnchantmentDialogue.getIngredient().getEnchantmentEffect().getLimits(EnchantmentDialogue.getPrimaryMod(), EnchantmentDialogue.getSecondaryMod())) {
-					EnchantmentEventListener el = new EnchantmentEventListener().setLimit(EnchantmentDialogue.getLimit()+1);
-					MainController.addEventListener(MainController.document, id, "click", el, false);
-				}
-				MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
-				MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
-				
-//				TooltipInformationEventListener el2 =  new TooltipInformationEventListener().setInformation(
-//						(EnchantmentDialogue.getLimit() < EnchantmentDialogue.getIngredient().getEnchantmentEffect().getLimits(EnchantmentDialogue.getPrimaryMod(), EnchantmentDialogue.getSecondaryMod())
-//								?"Limit Increase"
-//								:"Maximum Limit Reached"), "");
-//				MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
-			}
-			
-			id = "LIMIT_INCREASE_LARGE";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				int currentLimit = EnchantmentDialogue.getIngredient().getEnchantmentEffect().getLimits(EnchantmentDialogue.getPrimaryMod(), EnchantmentDialogue.getSecondaryMod());
-				int increment = Math.max(1, (currentLimit/10));
-				if(EnchantmentDialogue.getLimit() < currentLimit) {
-					EnchantmentEventListener el = new EnchantmentEventListener().setLimit(Math.min(currentLimit, EnchantmentDialogue.getLimit()+increment));
-					MainController.addEventListener(MainController.document, id, "click", el, false);
-				}
-				MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
-				MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
-				
-//				TooltipInformationEventListener el2 =  new TooltipInformationEventListener().setInformation(
-//						(EnchantmentDialogue.getLimit() < EnchantmentDialogue.getIngredient().getEnchantmentEffect().getLimits(EnchantmentDialogue.getPrimaryMod(), EnchantmentDialogue.getSecondaryMod())
-//								?"Large Limit Increase"
-//								:"Maximum Limit Reached"), "");
-//				MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
-			}
+				if (((EventTarget) MainController.document.getElementById("MOD_SECONDARY_ENCHANTING")) != null) {
 
-			id = "LIMIT_MAXIMUM";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				if(EnchantmentDialogue.getLimit() < EnchantmentDialogue.getIngredient().getEnchantmentEffect().getLimits(EnchantmentDialogue.getPrimaryMod(), EnchantmentDialogue.getSecondaryMod())) {
-					EnchantmentEventListener el = new EnchantmentEventListener().setLimit(EnchantmentDialogue.getIngredient().getEnchantmentEffect().getLimits(EnchantmentDialogue.getPrimaryMod(), EnchantmentDialogue.getSecondaryMod()));
-					MainController.addEventListener(MainController.document, id, "click", el, false);
+					EnchantmentEventListener el = new EnchantmentEventListener().setSecondaryModifier(TFModifier.NONE);
+					MainController.addEventListener(MainController.document, "MOD_SECONDARY_ENCHANTING", "click", el, false);
+
+					MainController.addEventListener(MainController.document, "MOD_SECONDARY_ENCHANTING", "mousemove", MainController.moveTooltipListener, false);
+					MainController.addEventListener(MainController.document, "MOD_SECONDARY_ENCHANTING", "mouseleave", MainController.hideTooltipListener, false);
+
+					TooltipInventoryEventListener el2 = new TooltipInventoryEventListener().setTFModifier(EnchantmentDialogue.getSecondaryMod());
+					MainController.addEventListener(MainController.document, "MOD_SECONDARY_ENCHANTING", "mouseenter", el2, false);
 				}
-				MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
-				MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
-				
-//				TooltipInformationEventListener el2 =  new TooltipInformationEventListener().setInformation(
-//						(EnchantmentDialogue.getLimit() < EnchantmentDialogue.getIngredient().getEnchantmentEffect().getLimits(EnchantmentDialogue.getPrimaryMod(), EnchantmentDialogue.getSecondaryMod())
-//								?"Set Limit To Maximum"
-//								:"Maximum Limit Reached"), "");
-//				MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
-			}
-			
-			// Ingredient icon:
-			if (((EventTarget) MainController.document.getElementById("INGREDIENT_ENCHANTING")) != null) {
-				
-				((EventTarget) MainController.document.getElementById("INGREDIENT_ENCHANTING")).addEventListener("click", e -> {
-					Main.game.setResponseTab(1);
-					if(EnchantmentDialogue.getIngredient() instanceof AbstractItem) {
-						Main.game.setContent(new Response("Back", "Stop enchanting.", InventoryDialogue.ITEM_INVENTORY){
-							@Override
-							public void effects() {
-								EnchantmentDialogue.resetEnchantmentVariables();
-							}
-						});
-						
-					} else if(EnchantmentDialogue.getIngredient() instanceof AbstractClothing) {
-						Main.game.setContent(new Response("Back", "Stop enchanting.", InventoryDialogue.CLOTHING_INVENTORY){
-							@Override
-							public void effects() {
-								EnchantmentDialogue.resetEnchantmentVariables();
-							}
-						});
-						
-					} else if(EnchantmentDialogue.getIngredient() instanceof AbstractWeapon) {
-						Main.game.setContent(new Response("Back", "Stop enchanting.", InventoryDialogue.WEAPON_INVENTORY){
-							@Override
-							public void effects() {
-								EnchantmentDialogue.resetEnchantmentVariables();
-							}
-						});
-						
-					} else if(EnchantmentDialogue.getIngredient() instanceof Tattoo) {
-						Main.game.setContent(new Response("Back", "Stop enchanting.", BodyChanging.getTarget().isPlayer()?SuccubisSecrets.SHOP_BEAUTY_SALON_TATTOOS:OccupantManagementDialogue.SLAVE_MANAGEMENT_TATTOOS){
-							@Override
-							public void effects() {
-								EnchantmentDialogue.resetEnchantmentVariables();
-							}
-						});
-						
+
+				for(TFPotency potency : TFPotency.values()) {
+					id = "POTENCY_"+potency;
+					if (((EventTarget) MainController.document.getElementById(id)) != null) {
+
+						EnchantmentEventListener el = new EnchantmentEventListener().setPotency(potency);
+						MainController.addEventListener(MainController.document, id, "click", el, false);
+
+						MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
+						MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
 					}
-					
-				}, false);
-				
-				MainController.addEventListener(MainController.document, "INGREDIENT_ENCHANTING", "mousemove", MainController.moveTooltipListener, false);
-				MainController.addEventListener(MainController.document, "INGREDIENT_ENCHANTING", "mouseleave", MainController.hideTooltipListener, false);
-				
-				TooltipInventoryEventListener el2 = null;
-				if(EnchantmentDialogue.getIngredient() instanceof AbstractItem) {
-					el2 = new TooltipInventoryEventListener().setItem((AbstractItem) EnchantmentDialogue.getIngredient(), Main.game.getPlayer(), null);
-					
-				} else if(EnchantmentDialogue.getIngredient() instanceof AbstractClothing) {
-					el2 = new TooltipInventoryEventListener().setClothing((AbstractClothing) EnchantmentDialogue.getIngredient(), Main.game.getPlayer(), null);
-					
-				} else if(EnchantmentDialogue.getIngredient() instanceof AbstractWeapon) {
-					el2 = new TooltipInventoryEventListener().setWeapon((AbstractWeapon) EnchantmentDialogue.getIngredient(), Main.game.getPlayer(), false);
-					
-				}  else if(EnchantmentDialogue.getIngredient() instanceof Tattoo) {
-					el2 = new TooltipInventoryEventListener().setTattoo(EnchantmentDialogue.getTattooSlot(), (Tattoo) EnchantmentDialogue.getIngredient(), EnchantmentDialogue.getTattooBearer(), EnchantmentDialogue.getTattooBearer());
 				}
+				for(int effectCount=0; effectCount<EnchantmentDialogue.getEffects().size(); effectCount++) {
+					id = "DELETE_EFFECT_"+effectCount;
+
+					if (((EventTarget) MainController.document.getElementById(id)) != null) {
+
+						EnchantmentEventListener el = new EnchantmentEventListener().removeEffect(effectCount);
+						MainController.addEventListener(MainController.document, id, "click", el, false);
+
+						MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
+						MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+
+						TooltipInformationEventListener el2 =  new TooltipInformationEventListener().setInformation("Delete Effect", "");
+						MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
+					}
+				}
+
+				AbstractItemEffectType effect = EnchantmentDialogue.getIngredient().getEnchantmentEffect();
+				int maxLimit = effect.getMaximumLimit();
+				int currentLimit = EnchantmentDialogue.getLimit();
+
+				id = "LIMIT_MINIMUM";
+				if (((EventTarget) MainController.document.getElementById(id)) != null) {
+					if(currentLimit > 0) {
+						EnchantmentEventListener el = new EnchantmentEventListener().setLimit(0);
+						MainController.addEventListener(MainController.document, id, "click", el, false);
+					}
+					MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
+					MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+				}
+
+				id = "LIMIT_DECREASE_LARGE";
+				if (((EventTarget) MainController.document.getElementById(id)) != null) {
+					if(currentLimit > 0) {
+                        EnchantmentEventListener el = new EnchantmentEventListener().setLimit(Math.max(0, EnchantmentDialogue.getLimit() - effect.getLargeLimitChange()));
+                        MainController.addEventListener(MainController.document, id, "click", el, false);
+					}
+					MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
+					MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+				}
+
+				id = "LIMIT_DECREASE";
+				if (((EventTarget) MainController.document.getElementById(id)) != null) {
+					if(currentLimit > 0) {
+						EnchantmentEventListener el = new EnchantmentEventListener().setLimit(EnchantmentDialogue.getLimit() - effect.getSmallLimitChange());
+						MainController.addEventListener(MainController.document, id, "click", el, false);
+					}
+					MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
+					MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+				}
+
+				id = "LIMIT_INCREASE";
+				if (((EventTarget) MainController.document.getElementById(id)) != null) {
+					if(currentLimit < maxLimit) {
+						EnchantmentEventListener el = new EnchantmentEventListener().setLimit(EnchantmentDialogue.getLimit() + effect.getSmallLimitChange());
+						MainController.addEventListener(MainController.document, id, "click", el, false);
+					}
+					MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
+					MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+				}
+
+				id = "LIMIT_INCREASE_LARGE";
+				if (((EventTarget) MainController.document.getElementById(id)) != null) {
+					if(currentLimit < maxLimit) {
+                        EnchantmentEventListener el = new EnchantmentEventListener().setLimit(Math.min(maxLimit, EnchantmentDialogue.getLimit() + effect.getLargeLimitChange()));
+                        MainController.addEventListener(MainController.document, id, "click", el, false);
+					}
+					MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
+					MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+				}
+
+				id = "LIMIT_MAXIMUM";
+				if (((EventTarget) MainController.document.getElementById(id)) != null) {
+					if(currentLimit < maxLimit) {
+						EnchantmentEventListener el = new EnchantmentEventListener().setLimit(maxLimit);
+						MainController.addEventListener(MainController.document, id, "click", el, false);
+					}
+					MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
+					MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+				}
+
 				
-				MainController.addEventListener(MainController.document, "INGREDIENT_ENCHANTING", "mouseenter", el2, false);
-			}
-			
-			// Output icon:
-			if (((EventTarget) MainController.document.getElementById("OUTPUT_ENCHANTING")) != null) {
-				
-				((EventTarget) MainController.document.getElementById("OUTPUT_ENCHANTING")).addEventListener("click", e -> {
-					 if(EnchantmentDialogue.getEffects().isEmpty()) {
-							
+				// Ingredient icon:
+				if (((EventTarget) MainController.document.getElementById("INGREDIENT_ENCHANTING")) != null) {
+
+					((EventTarget) MainController.document.getElementById("INGREDIENT_ENCHANTING")).addEventListener("click", e -> {
+						Main.game.setResponseTab(1);
+						if(EnchantmentDialogue.getIngredient() instanceof AbstractItem) {
+							Main.game.setContent(new Response("Back", "Stop enchanting.", InventoryDialogue.ITEM_INVENTORY){
+								@Override
+								public void effects() {
+									EnchantmentDialogue.resetEnchantmentVariables();
+								}
+							});
+
+						} else if(EnchantmentDialogue.getIngredient() instanceof AbstractClothing) {
+							Main.game.setContent(new Response("Back", "Stop enchanting.", InventoryDialogue.CLOTHING_INVENTORY){
+								@Override
+								public void effects() {
+									EnchantmentDialogue.resetEnchantmentVariables();
+								}
+							});
+
+						} else if(EnchantmentDialogue.getIngredient() instanceof AbstractWeapon) {
+							Main.game.setContent(new Response("Back", "Stop enchanting.", InventoryDialogue.WEAPON_INVENTORY){
+								@Override
+								public void effects() {
+									EnchantmentDialogue.resetEnchantmentVariables();
+								}
+							});
+
+						} else if(EnchantmentDialogue.getIngredient() instanceof Tattoo) {
+							Main.game.setContent(new Response("Back", "Stop enchanting.", BodyChanging.getTarget().isPlayer()?SuccubisSecrets.SHOP_BEAUTY_SALON_TATTOOS:OccupantManagementDialogue.SLAVE_MANAGEMENT_TATTOOS){
+								@Override
+								public void effects() {
+									EnchantmentDialogue.resetEnchantmentVariables();
+								}
+							});
+
+						}
+
+					}, false);
+
+					MainController.addEventListener(MainController.document, "INGREDIENT_ENCHANTING", "mousemove", MainController.moveTooltipListener, false);
+					MainController.addEventListener(MainController.document, "INGREDIENT_ENCHANTING", "mouseleave", MainController.hideTooltipListener, false);
+
+					TooltipInventoryEventListener el2 = null;
+					if(EnchantmentDialogue.getIngredient() instanceof AbstractItem) {
+						el2 = new TooltipInventoryEventListener().setItem((AbstractItem) EnchantmentDialogue.getIngredient(), Main.game.getPlayer(), null);
+
+					} else if(EnchantmentDialogue.getIngredient() instanceof AbstractClothing) {
+						el2 = new TooltipInventoryEventListener().setClothing((AbstractClothing) EnchantmentDialogue.getIngredient(), Main.game.getPlayer(), null);
+
+					} else if(EnchantmentDialogue.getIngredient() instanceof AbstractWeapon) {
+						el2 = new TooltipInventoryEventListener().setWeapon((AbstractWeapon) EnchantmentDialogue.getIngredient(), Main.game.getPlayer(), false);
+
+					}  else if(EnchantmentDialogue.getIngredient() instanceof Tattoo) {
+						el2 = new TooltipInventoryEventListener().setTattoo(EnchantmentDialogue.getTattooSlot(), (Tattoo) EnchantmentDialogue.getIngredient(), EnchantmentDialogue.getTattooBearer(), EnchantmentDialogue.getTattooBearer());
+					}
+
+					MainController.addEventListener(MainController.document, "INGREDIENT_ENCHANTING", "mouseenter", el2, false);
+				}
+
+				// Output icon:
+				if (((EventTarget) MainController.document.getElementById("OUTPUT_ENCHANTING")) != null) {
+
+					((EventTarget) MainController.document.getElementById("OUTPUT_ENCHANTING")).addEventListener("click", e -> {
+						if(EnchantmentDialogue.getEffects().isEmpty()) {
+
 						} else if(EnchantmentDialogue.canAffordCost(EnchantmentDialogue.getIngredient(), EnchantmentDialogue.getEffects())) {
 							Main.game.setContent(new ResponseEffectsOnly("Craft", "Craft '"+EnchantmentDialogue.getOutputName()+"'."){
 								@Override
 								public void effects() {
-									
+
 									EnchantmentDialogue.craftItem(EnchantmentDialogue.getIngredient(), EnchantmentDialogue.getEffects());
-									
+
 									if((EnchantmentDialogue.getPreviousIngredient() instanceof AbstractItem?Main.game.getPlayer().hasItem((AbstractItem) EnchantmentDialogue.getPreviousIngredient()):true)
 											&& (EnchantmentDialogue.getPreviousIngredient() instanceof AbstractClothing?Main.game.getPlayer().hasClothing((AbstractClothing) EnchantmentDialogue.getPreviousIngredient()):true)
 											&& (EnchantmentDialogue.getPreviousIngredient() instanceof AbstractWeapon?Main.game.getPlayer().hasWeapon((AbstractWeapon) EnchantmentDialogue.getPreviousIngredient()):true)) {
@@ -938,61 +917,60 @@ public class MainControllerInitMethod {
 									}
 								}
 							});
-							
+
 						}
-				}, false);
-				
-				MainController.addEventListener(MainController.document, "OUTPUT_ENCHANTING", "mousemove", MainController.moveTooltipListener, false);
-				MainController.addEventListener(MainController.document, "OUTPUT_ENCHANTING", "mouseleave", MainController.hideTooltipListener, false);
-				
-				TooltipInformationEventListener el2 = new TooltipInformationEventListener().setInformation("Craft", "Click to craft this item!");
-				MainController.addEventListener(MainController.document, "OUTPUT_ENCHANTING", "mouseenter", el2, false);
-			}
-			
-			// Adding an effect:
-			id = "ENCHANT_ADD_BUTTON";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				
-				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-					if(EnchantmentDialogue.getIngredient().getEnchantmentEffect().getEffectsDescription(
-							EnchantmentDialogue.getPrimaryMod(), EnchantmentDialogue.getSecondaryMod(), EnchantmentDialogue.getPotency(), EnchantmentDialogue.getLimit(), Main.game.getPlayer(), Main.game.getPlayer())==null) {
-						
-					} else {
-						Main.game.setContent(new Response("Add", "Add the effect.", EnchantmentDialogue.ENCHANTMENT_MENU){
-							@Override
-							public void effects() {
-								EnchantmentDialogue.addEffect(new ItemEffect(
-										EnchantmentDialogue.getIngredient().getEnchantmentEffect(), EnchantmentDialogue.getPrimaryMod(), EnchantmentDialogue.getSecondaryMod(), EnchantmentDialogue.getPotency(), EnchantmentDialogue.getLimit()));
-							}
-						});
-					}
-				}, false);
-				
-				MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
-				MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+					}, false);
 
-				TooltipInformationEventListener el2 =  new TooltipInformationEventListener().setInformation("Add Effect", "");
-				MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
-			}
-			
-			id = "ENCHANT_ADD_BUTTON_DISABLED";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
-				MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+					MainController.addEventListener(MainController.document, "OUTPUT_ENCHANTING", "mousemove", MainController.moveTooltipListener, false);
+					MainController.addEventListener(MainController.document, "OUTPUT_ENCHANTING", "mouseleave", MainController.hideTooltipListener, false);
 
-				TooltipInformationEventListener el2 =  new TooltipInformationEventListener().setInformation("Add Effect",
-						EnchantmentDialogue.getEffects().size() >= EnchantmentDialogue.getIngredient().getEnchantmentLimit()?"You have already added the maximum number of effects for this item!":"");
-				MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
-			}
-			
-			// Choosing a primary modifier:
-			if(EnchantmentDialogue.getIngredient() != null) {
+					TooltipInformationEventListener el2 = new TooltipInformationEventListener().setInformation("Craft", "Click to craft this item!");
+					MainController.addEventListener(MainController.document, "OUTPUT_ENCHANTING", "mouseenter", el2, false);
+				}
+
+				// Adding an effect:
+				id = "ENCHANT_ADD_BUTTON";
+				if (((EventTarget) MainController.document.getElementById(id)) != null) {
+
+					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
+						if(EnchantmentDialogue.getIngredient().getEnchantmentEffect().getEffectsDescription(
+								EnchantmentDialogue.getPrimaryMod(), EnchantmentDialogue.getSecondaryMod(), EnchantmentDialogue.getPotency(), EnchantmentDialogue.getLimit(), Main.game.getPlayer(), Main.game.getPlayer())==null) {
+
+						} else {
+							Main.game.setContent(new Response("Add", "Add the effect.", EnchantmentDialogue.ENCHANTMENT_MENU){
+								@Override
+								public void effects() {
+									EnchantmentDialogue.addEffect(new ItemEffect(
+											EnchantmentDialogue.getIngredient().getEnchantmentEffect(), EnchantmentDialogue.getPrimaryMod(), EnchantmentDialogue.getSecondaryMod(), EnchantmentDialogue.getPotency(), EnchantmentDialogue.getLimit()));
+								}
+							});
+						}
+					}, false);
+
+					MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
+					MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+
+					TooltipInformationEventListener el2 =  new TooltipInformationEventListener().setInformation("Add Effect", "");
+					MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
+				}
+
+				id = "ENCHANT_ADD_BUTTON_DISABLED";
+				if (((EventTarget) MainController.document.getElementById(id)) != null) {
+					MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
+					MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+
+					TooltipInformationEventListener el2 =  new TooltipInformationEventListener().setInformation("Add Effect",
+							EnchantmentDialogue.getEffects().size() >= EnchantmentDialogue.getIngredient().getEnchantmentLimit()?"You have already added the maximum number of effects for this item!":"");
+					MainController.addEventListener(MainController.document, id, "mouseenter", el2, false);
+				}
+
+				// Choosing a primary modifier:
 				for (TFModifier tfMod : EnchantmentDialogue.getIngredient().getEnchantmentEffect().getPrimaryModifiers()) {
 					if (((EventTarget) MainController.document.getElementById("MOD_PRIMARY_" + tfMod.hashCode())) != null) {
-						
+
 						EnchantmentEventListener el = new EnchantmentEventListener().setPrimaryModifier(tfMod);
 						MainController.addEventListener(MainController.document, "MOD_PRIMARY_"+tfMod.hashCode(), "click", el, false);
-						
+
 						MainController.addEventListener(MainController.document, "MOD_PRIMARY_" + tfMod.hashCode(), "mousemove", MainController.moveTooltipListener, false);
 						MainController.addEventListener(MainController.document, "MOD_PRIMARY_" + tfMod.hashCode(), "mouseleave", MainController.hideTooltipListener, false);
 	
@@ -1000,15 +978,13 @@ public class MainControllerInitMethod {
 						MainController.addEventListener(MainController.document, "MOD_PRIMARY_" + tfMod.hashCode(), "mouseenter", el2, false);
 					}
 				}
-			}
-			// Choosing a secondary modifier:
-			if(EnchantmentDialogue.getIngredient() != null) {
+				// Choosing a secondary modifier:
 				for (TFModifier tfMod : EnchantmentDialogue.getIngredient().getEnchantmentEffect().getSecondaryModifiers(EnchantmentDialogue.getPrimaryMod())) {
 					if (((EventTarget) MainController.document.getElementById("MOD_SECONDARY_" + tfMod.hashCode())) != null) {
-						
+
 						EnchantmentEventListener el = new EnchantmentEventListener().setSecondaryModifier(tfMod);
 						MainController.addEventListener(MainController.document, "MOD_SECONDARY_"+tfMod.hashCode(), "click", el, false);
-						
+
 						MainController.addEventListener(MainController.document, "MOD_SECONDARY_" + tfMod.hashCode(), "mousemove", MainController.moveTooltipListener, false);
 						MainController.addEventListener(MainController.document, "MOD_SECONDARY_" + tfMod.hashCode(), "mouseleave", MainController.hideTooltipListener, false);
 	
@@ -1210,7 +1186,7 @@ public class MainControllerInitMethod {
 				for(FluidStored fluid : room.getFluidsStored()) {
 					fluidHandler(room, fluid);
 				}
-				
+
 			}
 			
 			
@@ -2537,17 +2513,6 @@ public class MainControllerInitMethod {
 					}, false);
 				}
 				
-				// Lactation:
-				for(int i : CharacterModificationUtils.getLactationQuantitiesAvailable()) {
-					id = "LACTATION_"+i;
-					if (((EventTarget) MainController.document.getElementById(id)) != null) {
-						((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-							BodyChanging.getTarget().setBreastMilkStorage(i);
-							Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
-						}, false);
-					}
-				}
-				
 				// Ass size:
 				for(AssSize as : CharacterModificationUtils.getAssSizesAvailable()) {
 					id = "ASS_SIZE_"+as;
@@ -2615,20 +2580,6 @@ public class MainControllerInitMethod {
 					if (((EventTarget) MainController.document.getElementById(id)) != null) {
 						((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
 							BodyChanging.getTarget().setTesticleSize(ts.getValue());
-							Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
-						}, false);
-					}
-				}
-				
-				// Cum production:
-				for(CumProduction cp: CharacterModificationUtils.getCumProductionAvailable()) {
-					id = "CUM_PRODUCTION_"+cp;
-					if (((EventTarget) MainController.document.getElementById(id)) != null) {
-						((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-							BodyChanging.getTarget().setPenisCumStorage(cp.getMedianValue());
-							if(!Main.game.isInNewWorld()) {
-								BodyChanging.getTarget().fillCumToMaxStorage();
-							}
 							Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 						}, false);
 					}
@@ -2723,8 +2674,8 @@ public class MainControllerInitMethod {
 					}
 				}
 				
-				for(EarType earType: EarType.values()) {
-					id = "CHANGE_EAR_"+earType;
+				for(AbstractEarType earType: EarType.getAllEarTypes()) {
+					id = "CHANGE_EAR_"+EarType.getIdFromEarType(earType);
 					if (((EventTarget) MainController.document.getElementById(id)) != null) {
 						((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
 							BodyChanging.getTarget().setEarType(earType);
@@ -3170,16 +3121,6 @@ public class MainControllerInitMethod {
 					}
 				}
 				
-//				for(int i : CharacterModificationUtils.demonLactationValues) {
-//					id = "LACTATION_"+i;
-//					if (((EventTarget) MainController.document.getElementById(id)) != null) {
-//						((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-//							BodyChanging.getTarget().setBreastMilkStorage(i);
-//							Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
-//						}, false);
-//					}
-//				}
-				
 				for(OrificeModifier orificeMod : OrificeModifier.values()) {
 					id = "CHANGE_NIPPLE_MOD_"+orificeMod;
 					if (((EventTarget) MainController.document.getElementById(id)) != null) {
@@ -3358,42 +3299,45 @@ public class MainControllerInitMethod {
 				id = "CUM_PRODUCTION_INCREASE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementPenisCumStorage(1);
+						BodyChanging.getTarget().setPenisCumStorage(Math.min(CharacterModificationUtils.getCumUpperLimit(), BodyChanging.getTarget().getPenisRawCumStorageValue()+CharacterModificationUtils.FLUID_INCREMENT_SMALL));
+						BodyChanging.getTarget().fillCumToMaxStorage();
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "CUM_PRODUCTION_INCREASE_LARGE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementPenisCumStorage(25);
+						BodyChanging.getTarget().setPenisCumStorage(Math.min(CharacterModificationUtils.getCumUpperLimit(), BodyChanging.getTarget().getPenisRawCumStorageValue()+CharacterModificationUtils.FLUID_INCREMENT_AVERAGE));
+						BodyChanging.getTarget().fillCumToMaxStorage();
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "CUM_PRODUCTION_INCREASE_HUGE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementPenisCumStorage(500);
+						BodyChanging.getTarget().setPenisCumStorage(Math.min(CharacterModificationUtils.getCumUpperLimit(), BodyChanging.getTarget().getPenisRawCumStorageValue()+CharacterModificationUtils.FLUID_INCREMENT_LARGE));
+						BodyChanging.getTarget().fillCumToMaxStorage();
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "CUM_PRODUCTION_DECREASE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementPenisCumStorage(-1);
+						BodyChanging.getTarget().incrementPenisCumStorage(-CharacterModificationUtils.FLUID_INCREMENT_SMALL);
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "CUM_PRODUCTION_DECREASE_LARGE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementPenisCumStorage(-25);
+						BodyChanging.getTarget().incrementPenisCumStorage(-CharacterModificationUtils.FLUID_INCREMENT_AVERAGE);
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "CUM_PRODUCTION_DECREASE_HUGE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementPenisCumStorage(-500);
+						BodyChanging.getTarget().incrementPenisCumStorage(-CharacterModificationUtils.FLUID_INCREMENT_LARGE);
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
@@ -3402,42 +3346,45 @@ public class MainControllerInitMethod {
 				id = "MILK_PRODUCTION_INCREASE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementBreastMilkStorage(1);
+						BodyChanging.getTarget().setBreastMilkStorage(Math.min(CharacterModificationUtils.getLactationUpperLimit(), BodyChanging.getTarget().getBreastRawMilkStorageValue()+CharacterModificationUtils.FLUID_INCREMENT_SMALL));
+						BodyChanging.getTarget().fillMilkToMaxStorage();
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "MILK_PRODUCTION_INCREASE_LARGE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementBreastMilkStorage(25);
+						BodyChanging.getTarget().setBreastMilkStorage(Math.min(CharacterModificationUtils.getLactationUpperLimit(), BodyChanging.getTarget().getBreastRawMilkStorageValue()+CharacterModificationUtils.FLUID_INCREMENT_AVERAGE));
+						BodyChanging.getTarget().fillMilkToMaxStorage();
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "MILK_PRODUCTION_INCREASE_HUGE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementBreastMilkStorage(500);
+						BodyChanging.getTarget().setBreastMilkStorage(Math.min(CharacterModificationUtils.getLactationUpperLimit(), BodyChanging.getTarget().getBreastRawMilkStorageValue()+CharacterModificationUtils.FLUID_INCREMENT_LARGE));
+						BodyChanging.getTarget().fillMilkToMaxStorage();
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "MILK_PRODUCTION_DECREASE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementBreastMilkStorage(-1);
+						BodyChanging.getTarget().incrementBreastMilkStorage(-CharacterModificationUtils.FLUID_INCREMENT_SMALL);
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "MILK_PRODUCTION_DECREASE_LARGE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementBreastMilkStorage(-25);
+						BodyChanging.getTarget().incrementBreastMilkStorage(-CharacterModificationUtils.FLUID_INCREMENT_AVERAGE);
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "MILK_PRODUCTION_DECREASE_HUGE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementBreastMilkStorage(-500);
+						BodyChanging.getTarget().incrementBreastMilkStorage(-CharacterModificationUtils.FLUID_INCREMENT_LARGE);
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
@@ -3446,42 +3393,48 @@ public class MainControllerInitMethod {
 				id = "MILK_CROTCH_PRODUCTION_INCREASE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementBreastCrotchMilkStorage(1);
+						BodyChanging.getTarget().setBreastCrotchMilkStorage(
+								Math.min(CharacterModificationUtils.getLactationCrotchUpperLimit(), BodyChanging.getTarget().getBreastCrotchRawMilkStorageValue()+CharacterModificationUtils.FLUID_INCREMENT_SMALL));
+						BodyChanging.getTarget().fillMilkCrotchToMaxStorage();
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "MILK_CROTCH_PRODUCTION_INCREASE_LARGE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementBreastCrotchMilkStorage(25);
+						BodyChanging.getTarget().setBreastCrotchMilkStorage(
+								Math.min(CharacterModificationUtils.getLactationCrotchUpperLimit(), BodyChanging.getTarget().getBreastCrotchRawMilkStorageValue()+CharacterModificationUtils.FLUID_INCREMENT_AVERAGE));
+						BodyChanging.getTarget().fillMilkCrotchToMaxStorage();
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "MILK_CROTCH_PRODUCTION_INCREASE_HUGE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementBreastCrotchMilkStorage(500);
+						BodyChanging.getTarget().setBreastCrotchMilkStorage(
+								Math.min(CharacterModificationUtils.getLactationCrotchUpperLimit(), BodyChanging.getTarget().getBreastCrotchRawMilkStorageValue()+CharacterModificationUtils.FLUID_INCREMENT_LARGE));
+						BodyChanging.getTarget().fillMilkCrotchToMaxStorage();
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "MILK_CROTCH_PRODUCTION_DECREASE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementBreastCrotchMilkStorage(-1);
+						BodyChanging.getTarget().incrementBreastCrotchMilkStorage(-CharacterModificationUtils.FLUID_INCREMENT_SMALL);
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "MILK_CROTCH_PRODUCTION_DECREASE_LARGE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementBreastCrotchMilkStorage(-25);
+						BodyChanging.getTarget().incrementBreastCrotchMilkStorage(-CharacterModificationUtils.FLUID_INCREMENT_AVERAGE);
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
 				id = "MILK_CROTCH_PRODUCTION_DECREASE_HUGE";
 				if (((EventTarget) MainController.document.getElementById(id)) != null) {
 					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						BodyChanging.getTarget().incrementBreastCrotchMilkStorage(-500);
+						BodyChanging.getTarget().incrementBreastCrotchMilkStorage(-CharacterModificationUtils.FLUID_INCREMENT_LARGE);
 						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 					}, false);
 				}
@@ -4328,7 +4281,7 @@ public class MainControllerInitMethod {
 					}
 				}
 				if(Pattern.getPattern(InventoryDialogue.dyePreviewPattern)!=null && Pattern.getPattern(InventoryDialogue.dyePreviewPattern).isPrimaryRecolourAvailable()) {
-					for (Colour c : ColourListPresets.ALL.getPresetColourList()) {
+					for (Colour c : ColourListPresets.ALL) {
 						id = "PATTERN_PRIMARY_"+clothing.hashCode() + "_" + c.toString();
 						if ((EventTarget) MainController.document.getElementById(id) != null) {
 							((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
@@ -4339,7 +4292,7 @@ public class MainControllerInitMethod {
 					}
 				}
 				if(Pattern.getPattern(InventoryDialogue.dyePreviewPattern)!=null && Pattern.getPattern(InventoryDialogue.dyePreviewPattern).isSecondaryRecolourAvailable()) {
-					for (Colour c : ColourListPresets.ALL.getPresetColourList()) {
+					for (Colour c : ColourListPresets.ALL) {
 						id = "PATTERN_SECONDARY_"+clothing.hashCode() + "_" + c.toString();
 						if ((EventTarget) MainController.document.getElementById(id) != null) {
 							((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
@@ -4350,7 +4303,7 @@ public class MainControllerInitMethod {
 					}
 				}
 				if(Pattern.getPattern(InventoryDialogue.dyePreviewPattern)!=null && Pattern.getPattern(InventoryDialogue.dyePreviewPattern).isTertiaryRecolourAvailable()) {
-					for (Colour c : ColourListPresets.ALL.getPresetColourList()) {
+					for (Colour c : ColourListPresets.ALL) {
 						id = "PATTERN_TERTIARY_"+clothing.hashCode() + "_" + c.toString();
 						if ((EventTarget) MainController.document.getElementById(id) != null) {
 							((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
@@ -4596,51 +4549,81 @@ public class MainControllerInitMethod {
 				}
 			}
 			
-			if (Main.game.getCurrentDialogueNode() == PhoneDialogue.MENU || Main.game.getCurrentDialogueNode() == Library.DOMINION_MAP) {
+			if (
+//					Main.game.getCurrentDialogueNode().equals(PhoneDialogue.MENU) ||
+					Main.game.getCurrentDialogueNode().equals(Library.DOMINION_MAP)) {
 				Cell[][] grid;
-				if(Main.game.getCurrentDialogueNode() == PhoneDialogue.MENU) {
-					grid = Main.game.getWorlds().get(Main.game.getPlayer().getWorldLocation()).getGrid();
-				} else {
+//				if(Main.game.getCurrentDialogueNode().equals(PhoneDialogue.MENU)) {
+//					grid = Main.game.getWorlds().get(Main.game.getPlayer().getWorldLocation()).getGrid();
+//				} else {
 					grid = Main.game.getWorlds().get(WorldType.DOMINION).getGrid();
-				}
+//				}
 
 				for(int i=grid[0].length-1; i>=0; i--) {
 					for(int j=0; j<grid.length; j++) {
 						Cell c = grid[j][i];
-						boolean discovered = c.isDiscovered() || Main.game.isMapReveal();
-						if(!discovered) {
-							continue;
-						}
-						if(c.getPlace().getPlaceType() == PlaceType.GENERIC_IMPASSABLE) {
-							continue;
-						}
-						MainController.setMapLocationListeners(c, i, j);
-					}
-				}
-			}
-			
-			if (Main.game.getCurrentDialogueNode() == PhoneDialogue.MAP || Main.game.getCurrentDialogueNode() == CityPlaces.WORLD_MAP) {
-				WorldType worldType = PhoneDialogue.worldTypeMap;
-				if(Main.game.getCurrentDialogueNode() == CityPlaces.WORLD_MAP) {
-					worldType = WorldType.WORLD_MAP;
-				}
-				Cell[][] grid = Main.game.getWorlds().get(worldType).getGrid();
-
-				for(int i=grid[0].length-1; i>=0; i--) {
-					for(int j=0; j<grid.length; j++) {
-						Cell c = grid[j][i];
-						if(PhoneDialogue.worldTypeMap == WorldType.WORLD_MAP || Main.game.getCurrentDialogueNode() == CityPlaces.WORLD_MAP) {
-							MainController.setWorldMapLocationListeners(c, i, j);
+						if(Main.game.isInGlobalMap()) {
+							MainController.setMapLocationListeners(c, i, j);
+							
 						} else {
 							boolean discovered = c.isDiscovered() || Main.game.isMapReveal();
 							if(!discovered) {
 								continue;
 							}
-							if(c.getPlace().getPlaceType() == PlaceType.GENERIC_IMPASSABLE) {
+							if(c.getPlace().getPlaceType().equals(PlaceType.GENERIC_IMPASSABLE)) {
 								continue;
 							}
 							MainController.setMapLocationListeners(c, i, j);
 						}
+					}
+				}
+				
+			}
+			
+			if (Main.game.getCurrentDialogueNode().equals(PhoneDialogue.MAP)) {
+				WorldType worldType = PhoneDialogue.worldTypeMap;
+				Cell[][] grid = Main.game.getWorlds().get(worldType).getGrid();
+
+				for(int i=grid[0].length-1; i>=0; i--) {
+					for(int j=0; j<grid.length; j++) {
+						Cell c = grid[j][i];
+						if(PhoneDialogue.worldTypeMap.equals(WorldType.WORLD_MAP)) {
+							MainController.setMapLocationListeners(c, i, j);
+							
+						} else {
+							boolean discovered = c.isDiscovered() || Main.game.isMapReveal();
+							if(!discovered) {
+								continue;
+							}
+							if(c.getPlace().getPlaceType().equals(PlaceType.GENERIC_IMPASSABLE)) {
+								continue;
+							}
+							MainController.setMapLocationListeners(c, i, j);
+						}
+					}
+				}
+
+				for(MapTravelType type : MapTravelType.values()) {
+					id = type.toString();
+					if (((EventTarget) MainController.document.getElementById(id)) != null) {
+						if(type.isAvailable(Main.game.getPlayer())) {
+							((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
+								Pathing.initPathingVariables();
+								Pathing.setMapTravelType(type);
+								Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
+							}, false);
+						}
+						
+						MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
+						MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
+						MainController.addEventListener(MainController.document, id, "mouseenter",
+								new TooltipInformationEventListener().setInformation(
+										type.getName(),
+										type.getDescription()
+											+(type.isAvailable(Main.game.getPlayer())
+													?" ("+type.getUseInstructions()+")"
+													:"<br/>[style.italicsBad("+type.getUnavailablilityDescription(Main.game.getPlayer())+")]")),
+								false);
 					}
 				}
 			}
@@ -5009,61 +4992,49 @@ public class MainControllerInitMethod {
 //				}
 //			}
 //		}
+
+		// Unit preferences:
+		if (Main.game.getCurrentDialogueNode() == OptionsDialogue.UNIT_PREFERENCE) {
+			createToggleListener("AUTO_LOCALE_ON", PropertyValue.autoLocale, true, () -> {
+				Units.FORMATTER.updateSettings();
+				Units.FORMATTER.updateFormats(true);
+			});
+			createToggleListener("AUTO_LOCALE_OFF", PropertyValue.autoLocale, false, () -> {
+				Units.FORMATTER.updateSettings();
+				Units.FORMATTER.updateFormats(false);
+
+			});
+			createToggleListener("METRIC_SIZES_ON", PropertyValue.metricSizes, true, MainController::overrideAutoLocale);
+			createToggleListener("METRIC_SIZES_OFF", PropertyValue.metricSizes, false, MainController::overrideAutoLocale);
+			createToggleListener("METRIC_FLUIDS_ON", PropertyValue.metricFluids, true, MainController::overrideAutoLocale);
+			createToggleListener("METRIC_FLUIDS_OFF", PropertyValue.metricFluids, false, MainController::overrideAutoLocale);
+			createToggleListener("METRIC_WEIGHTS_ON", PropertyValue.metricWeights, true, MainController::overrideAutoLocale);
+			createToggleListener("METRIC_WEIGHTS_OFF", PropertyValue.metricWeights, false, MainController::overrideAutoLocale);
+
+			Runnable updater = () -> {
+				MainController.overrideAutoLocale();
+				Units.FORMATTER.updateTimeFormat(false);
+			};
+			createToggleListener("TWENTYFOUR_HOUR_TIME_ON", PropertyValue.twentyFourHourTime, true, updater);
+			createToggleListener("TWENTYFOUR_HOUR_TIME_OFF", PropertyValue.twentyFourHourTime, false, updater);
+
+			updater = () -> {
+				MainController.overrideAutoLocale();
+				Units.FORMATTER.updateDateFormat(false);
+			};
+			createToggleListener("INTERNATIONAL_DATE_ON", PropertyValue.internationalDate, true, updater);
+			createToggleListener("INTERNATIONAL_DATE_OFF", PropertyValue.internationalDate, false, updater);
+		}
 		
 		// Content preferences:
 
 		if (Main.game.getCurrentDialogueNode() == OptionsDialogue.CONTENT_PREFERENCE || Main.game.getCurrentDialogueNode() == CharacterCreation.CONTENT_PREFERENCES) {
-			id = "ARTWORK_ON";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-					Main.getProperties().setValue(PropertyValue.artwork, true);
-					Main.saveProperties();
-					Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
-				}, false);
-			}
-			id = "ARTWORK_OFF";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-					Main.getProperties().setValue(PropertyValue.artwork, false);
-					Main.saveProperties();
-					Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
-				}, false);
-			}
-
-			id = "SILLY_ON";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-					Main.getProperties().setValue(PropertyValue.sillyMode, true);
-					Main.saveProperties();
-					Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
-				}, false);
-			}
-
-			id = "SILLY_OFF";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-					Main.getProperties().setValue(PropertyValue.sillyMode, false);
-					Main.saveProperties();
-					Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
-				}, false);
-			}
-
-			id = "THUMBNAIL_ON";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-					Main.getProperties().setValue(PropertyValue.thumbnail, true);
-					Main.saveProperties();
-					Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
-				}, false);
-			}
-			id = "THUMBNAIL_OFF";
-			if (((EventTarget) MainController.document.getElementById(id)) != null) {
-				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-					Main.getProperties().setValue(PropertyValue.thumbnail, false);
-					Main.saveProperties();
-					Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
-				}, false);
-			}
+			createToggleListener("ARTWORK_ON", PropertyValue.artwork, true);
+			createToggleListener("ARTWORK_OFF", PropertyValue.artwork, false);
+			createToggleListener("SILLY_ON", PropertyValue.sillyMode, true);
+			createToggleListener("SILLY_OFF", PropertyValue.sillyMode, false);
+			createToggleListener("THUMBNAIL_ON", PropertyValue.thumbnail, true);
+			createToggleListener("THUMBNAIL_OFF", PropertyValue.thumbnail, false);
 
 			for(Artist artist : Artwork.allArtists) {
 				id = "ARTIST_"+artist.getFolderName();
@@ -5112,22 +5083,8 @@ public class MainControllerInitMethod {
 					new Value<>("INFLATION_CONTENT", PropertyValue.inflationContent));
 			
 			for(Entry<String, PropertyValue> entry : settingsMap.entrySet()) {
-				id = entry.getKey()+"_ON";
-				if (((EventTarget) MainController.document.getElementById(id)) != null) {
-					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						Main.getProperties().setValue(entry.getValue(), true);
-						Main.saveProperties();
-						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
-					}, false);
-				}
-				id = entry.getKey()+"_OFF";
-				if (((EventTarget) MainController.document.getElementById(id)) != null) {
-					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-						Main.getProperties().setValue(entry.getValue(), false);
-						Main.saveProperties();
-						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
-					}, false);
-				}
+				createToggleListener(entry.getKey()+"_ON", entry.getValue(), true);
+				createToggleListener(entry.getKey()+"_OFF", entry.getValue(), false);
 			}
 			
 
@@ -5183,7 +5140,6 @@ public class MainControllerInitMethod {
 				}, false);
 			}
 			
-			
 			id = "PREGNANCY_LACTATION_ON";
 			if (((EventTarget) MainController.document.getElementById(id)) != null) {
 				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
@@ -5204,7 +5160,7 @@ public class MainControllerInitMethod {
 			id = "PREGNANCY_LACTATION_LIMIT_ON";
 			if (((EventTarget) MainController.document.getElementById(id)) != null) {
 				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-					Main.getProperties().pregnancyLactationLimit = Math.min(Lactation.SEVEN_MONSTROUS_AMOUNT_POURING.getMaximumValue(), Main.getProperties().pregnancyLactationLimit+250);
+					Main.getProperties().pregnancyLactationLimit = Math.min(Lactation.SEVEN_MONSTROUS_AMOUNT_POURING.getMaximumValue(), Main.getProperties().pregnancyLactationLimit+500);
 					Main.saveProperties();
 					Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 				}, false);
@@ -5212,11 +5168,48 @@ public class MainControllerInitMethod {
 			id = "PREGNANCY_LACTATION_LIMIT_OFF";
 			if (((EventTarget) MainController.document.getElementById(id)) != null) {
 				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-					Main.getProperties().pregnancyLactationLimit = Math.max(0, Main.getProperties().pregnancyLactationLimit-250);
+					Main.getProperties().pregnancyLactationLimit = Math.max(0, Main.getProperties().pregnancyLactationLimit-500);
 					Main.saveProperties();
 					Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
 				}, false);
 			}
+			
+			
+			id = "BREAST_SIZE_PREFERENCE_ON";
+			if (((EventTarget) MainController.document.getElementById(id)) != null) {
+				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
+					Main.getProperties().breastSizePreference = Math.min(20, Main.getProperties().breastSizePreference+1);
+					Main.saveProperties();
+					Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
+				}, false);
+			}
+			id = "BREAST_SIZE_PREFERENCE_OFF";
+			if (((EventTarget) MainController.document.getElementById(id)) != null) {
+				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
+					Main.getProperties().breastSizePreference = Math.max(-20, Main.getProperties().breastSizePreference-1);
+					Main.saveProperties();
+					Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
+				}, false);
+			}
+
+			
+			id = "PENIS_SIZE_PREFERENCE_ON";
+			if (((EventTarget) MainController.document.getElementById(id)) != null) {
+				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
+					Main.getProperties().penisSizePreference = Math.min(20, Main.getProperties().penisSizePreference+1);
+					Main.saveProperties();
+					Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
+				}, false);
+			}
+			id = "PENIS_SIZE_PREFERENCE_OFF";
+			if (((EventTarget) MainController.document.getElementById(id)) != null) {
+				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
+					Main.getProperties().penisSizePreference = Math.max(-20, Main.getProperties().penisSizePreference-1);
+					Main.saveProperties();
+					Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
+				}, false);
+			}
+			
 			
 			
 			id = "FORCED_FETISH_ON";
@@ -5701,7 +5694,7 @@ public class MainControllerInitMethod {
 		
 
 		// Save/load enchantment:
-		if(Main.game.isStarted() && Main.game.getPlayerCell().getPlace().getPlaceType()==PlaceType.GAMBLING_DEN_GAMBLING) {
+		if(Main.game.isStarted() && Main.game.getPlayerCell().getPlace().getPlaceType().equals(PlaceType.GAMBLING_DEN_GAMBLING)) {
 			for(int i=0; i<DicePoker.getPlayerDice().size(); i++) {
 				setDiceHandler(i);
 			}
@@ -5710,7 +5703,22 @@ public class MainControllerInitMethod {
 		MainController.setResponseEventListeners();
 	
 	}
-	
+
+	private static void createToggleListener(String id, PropertyValue option, boolean value) {
+		createToggleListener(id, option, value, null);
+	}
+
+	private static void createToggleListener(String id, PropertyValue option, boolean value, Runnable action) {
+		if (MainController.document.getElementById(id) != null) {
+			((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
+				Main.getProperties().setValue(option, value);
+				if (action != null) action.run();
+				Main.saveProperties();
+				Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
+			}, false);
+		}
+	}
+
 	static void setDiceHandler(int i) {
 		String id = "DICE_PLAYER_"+i;
 		if (((EventTarget) MainController.document.getElementById(id)) != null) {
@@ -5764,7 +5772,14 @@ public class MainControllerInitMethod {
 		} else if(fluid.isGirlCum()) {
 			idModifier = "GIRLCUM";
 		}
-		String fluidName = fluid.getFluid().getName(fluid.getFluidCharacter());
+		GameCharacter fluidOwner;
+		try {
+			fluidOwner = fluid.getFluidCharacter();
+		} catch (Exception e1) {
+			fluidOwner = null;
+		}
+		
+		String fluidName = fluid.getFluid().getName(fluidOwner);
 		
 		Map<CoverableArea, SexAreaOrifice> areas = Util.newHashMapOfValues(
 				new Value<>(CoverableArea.MOUTH, SexAreaOrifice.MOUTH),
@@ -5772,43 +5787,102 @@ public class MainControllerInitMethod {
 				new Value<>(CoverableArea.ANUS, SexAreaOrifice.ANUS));
 		
 		for(Entry<CoverableArea, SexAreaOrifice> area : areas.entrySet()) {
-			String id = idModifier+"_"+area.getKey()+"_"+fluid.getFluid().hashCode();
+			String id = idModifier+"_"+area.getKey()+"_"+fluid.hashCode();
 			if (((EventTarget) MainController.document.getElementById(id)) != null) {
 				float milkAmount = Math.min(fluid.getMillilitres(), MilkingRoom.INGESTION_AMOUNT);
-				boolean canIngest = room.isAbleToIngestThroughArea(Main.game.getPlayer(), area.getKey(), milkAmount);
+				boolean canIngest = room.isAbleToIngestThroughArea(fluid.getFluid().getType().getBaseType(), MilkingRoom.getTargetedCharacter(), area.getKey(), milkAmount);
 				
-				String fluidOwnerName = fluid.getFluidCharacter()==null?"the":UtilText.parse(fluid.getFluidCharacter(), "[npc.namePos]");
+				String fluidOwnerName = fluidOwner==null
+						?"the"
+						:(fluidOwner.equals(MilkingRoom.getTargetedCharacter())
+							?UtilText.parse(fluidOwner, "[npc.her] own")
+							:UtilText.parse(fluidOwner, "[npc.namePos]"));
 				
-				
-				((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
-					Main.game.getTextEndStringBuilder().append("<p>");
-					if(canIngest) {
-						switch(area.getKey()) {
-							case ANUS:
-								Main.game.getTextEndStringBuilder().append(
-										"Grabbing one of the free tubes connected to the vat of "+fluidOwnerName+" "+fluidName+", you quickly remove the suction device on the end, before screwing on one of the funnel attachments."
-										+ " Guiding the end of the tube around to your [pc.ass+], you waste no time in sliding the funnel into your [pc.asshole+].<br/>"
-										+ "Flicking the switch on the side of the vat from 'suck' to 'pump', you then press the start button, letting out a delighted [pc.moan] as you feel the "+fluidName+" being pumped into your [pc.asshole].");
-								break;
-							case MOUTH:
-								Main.game.getTextEndStringBuilder().append(
-										"Grabbing one of the free tubes connected to the vat of "+fluidOwnerName+" "+fluidName+", you quickly remove the suction device on the end, before screwing on one of the straw-like attachments."
-										+ " Lifting the straw up to your mouth, you waste no time in sliding it between your [pc.lips+].<br/>"
-										+ "Flicking the switch on the side of the vat from 'suck' to 'pump', you then press the start button, letting out a delighted [pc.moan] as you hungrily gulp down the "+fluidName+".");
-								break;
-							case VAGINA:
-								Main.game.getTextEndStringBuilder().append(
-										"Grabbing one of the free tubes connected to the vat of "+fluidOwnerName+" "+fluidName+", you quickly remove the suction device on the end, before screwing on one of the funnel attachments."
-										+ " Guiding the end of the tube between your [pc.legs+], you waste no time in sliding the funnel into your [pc.pussy+].<br/>"
-										+ "Flicking the switch on the side of the vat from 'suck' to 'pump', you then press the start button, letting out a delighted [pc.moan] as you feel the "+fluidName+" being pumped"
-											+(Main.game.getPlayer().isVisiblyPregnant()
-												?" into your [pc.pussy]."
-												:" directly into your waiting womb."));
-								break;
-							default:
-								break;
+
+				if(canIngest) {
+					((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
+						Main.game.getTextEndStringBuilder().append("<p>");
+						
+						if(MilkingRoom.getTargetedCharacter().isPlayer()) {
+							switch(area.getKey()) {
+								case ANUS:
+									Main.game.getTextEndStringBuilder().append(UtilText.parse(MilkingRoom.getTargetedCharacter(),
+											"Grabbing one of the free tubes connected to the vat of "+fluidOwnerName+" "+fluidName+", you quickly remove the suction device on the end, before screwing on one of the funnel attachments."
+											+ " Guiding the end of the tube around to your [pc.ass+], you waste no time in sliding the funnel into your [pc.asshole+]."
+											+ " Flicking the switch on the side of the vat from 'suck' to 'pump', you then press the start button, letting out a delighted [pc.moan] as you feel the "+fluidName+" being pumped into your [pc.asshole]."));
+									break;
+								case MOUTH:
+									Main.game.getTextEndStringBuilder().append(UtilText.parse(MilkingRoom.getTargetedCharacter(),
+											"Grabbing one of the free tubes connected to the vat of "+fluidOwnerName+" "+fluidName+", you quickly remove the suction device on the end, before screwing on one of the straw-like attachments."
+											+ " Lifting the straw up to your mouth, you waste no time in sliding it between your [pc.lips+]."
+											+ " Flicking the switch on the side of the vat from 'suck' to 'pump', you then press the start button, letting out a delighted [pc.moan] as you hungrily gulp down the "+fluidName+"."));
+									break;
+								case VAGINA:
+									Main.game.getTextEndStringBuilder().append(UtilText.parse(MilkingRoom.getTargetedCharacter(),
+											"Grabbing one of the free tubes connected to the vat of "+fluidOwnerName+" "+fluidName+", you quickly remove the suction device on the end, before screwing on one of the funnel attachments."
+											+ " Guiding the end of the tube between your [pc.legs+], you waste no time in sliding the funnel into your [pc.pussy+]."
+											+ " Flicking the switch on the side of the vat from 'suck' to 'pump', you then press the start button, letting out a delighted [pc.moan] as you feel the "+fluidName+" being pumped"
+												+(MilkingRoom.getTargetedCharacter().isVisiblyPregnant()
+													?" into your [pc.pussy]."
+													:" directly into your waiting womb.")));
+									break;
+								default:
+									break;
+							}
+						} else {
+							switch(area.getKey()) {
+								case ANUS:
+									Main.game.getTextEndStringBuilder().append(UtilText.parse(MilkingRoom.getTargetedCharacter(),
+												"Wanting to pump [npc.namePos] [npc.ass+] full of "+fluidOwnerName+" "+fluidName+", you instruct [npc.herHim] to"
+													+ (MilkingRoom.getTargetedCharacter().getLegConfiguration().isBipedalPositionedGenitals() && MilkingRoom.getTargetedCharacter().getGenitalArrangement()==GenitalArrangement.NORMAL
+															?" bend over before you."
+															:" kneel down and present [npc.herself] to you.")
+												+ " As soon as [npc.her] [npc.asshole+] is fully on display, you grab one of the free tubes connected to your selected vat of fluid,"
+													+ " before quickly removing the suction device on the end and screwing on one of the funnel attachments."
+											+ "</p>"
+											+ "<p>"
+												+ "Guiding the end of the tube up to [npc.namePos] [npc.ass+], you waste no time in sliding the funnel into [npc.her] [npc.asshole+], smiling to yourself as [npc.she] lets out [npc.a_moan+]."
+												+ " Flicking the switch on the side of the vat from 'suck' to 'pump', you then press the start button,"
+													+ " causing [npc.name] to let out yet more delighted [npc.moans] as [npc.she] feels the "+fluidName+" being pumped into [npc.her] [npc.asshole]."));
+									break;
+								case MOUTH:
+									Main.game.getTextEndStringBuilder().append(UtilText.parse(MilkingRoom.getTargetedCharacter(),
+											"Wanting to give [npc.namePos] a taste of "+fluidOwnerName+" "+fluidName+", you instruct [npc.herHim] to kneel down before you."
+											+ " As soon as [npc.she] complies, you grab one of the free tubes connected to your selected vat of fluid,"
+												+ " before quickly removing the suction device on the end and screwing on one of the straw-like attachments."
+										+ "</p>"
+											+ "Bringing the straw to [npc.namePos] mouth, you waste no time in sliding it between [npc.her] [npc.lips+] and telling [npc.herHim] to prepare [npc.herself] for a tasty meal."
+											+ " Flicking the switch on the side of the vat from 'suck' to 'pump', you then press the start button, letting out a delighted [pc.moan] as you watch [npc.name] hungrily gulp down the "+fluidName+"."));
+									break;
+								case VAGINA:
+									Main.game.getTextEndStringBuilder().append(UtilText.parse(MilkingRoom.getTargetedCharacter(),
+											"Wanting to pump [npc.namePos] [npc.pussy+] full of "+fluidOwnerName+" "+fluidName+", you instruct [npc.herHim] to"
+												+ (MilkingRoom.getTargetedCharacter().getLegConfiguration().isBipedalPositionedGenitals() && MilkingRoom.getTargetedCharacter().getGenitalArrangement()==GenitalArrangement.NORMAL
+														?" sit down on a nearby chair and spread [npc.her] [npc.legs]."
+														:" kneel down and present [npc.herself] to you.")
+												+ " As soon as [npc.she] complies, and [npc.her] [npc.pussy+] is fully on display, you grab one of the free tubes connected to your selected vat of fluid,"
+													+ " before quickly removing the suction device on the end and screwing on one of the funnel attachments."
+											+ "</p>"
+											+ "<p>"
+												+ "Guiding the end of the tube up to [npc.namePos] [npc.labia+], you waste no time in sliding the funnel into [npc.her] [npc.pussy+], smiling to yourself as [npc.she] lets out [npc.a_moan+]."
+												+ " Flicking the switch on the side of the vat from 'suck' to 'pump', you then press the start button,"
+													+ " causing [npc.name] to let out yet more delighted [npc.moans] as [npc.she] feels the "+fluidName+" being pumped"
+											+(MilkingRoom.getTargetedCharacter().isVisiblyPregnant()
+												?" into [npc.her] [npc.pussy]."
+												:" directly into [npc.her] waiting womb.")));
+									break;
+								default:
+									break;
+							}
 						}
-						String ingestion = Main.game.getPlayer().ingestFluid(fluid.getFluidCharacter(), fluid.getFluid(), area.getValue(), milkAmount);
+						
+						String ingestion;
+						try {
+							GameCharacter c = fluid.getFluidCharacter();
+							ingestion = MilkingRoom.getTargetedCharacter().ingestFluid(c, fluid.getFluid(), area.getValue(), milkAmount);
+						} catch (Exception e1) {
+							ingestion = MilkingRoom.getTargetedCharacter().ingestFluid(null, fluid.getFluid(), area.getValue(), milkAmount);
+						}
 						if(!ingestion.isEmpty()) {
 							Main.game.getTextEndStringBuilder().append("</p>"
 									+ "<p>"
@@ -5817,36 +5891,55 @@ public class MainControllerInitMethod {
 						Main.game.getTextEndStringBuilder().append("</p>");
 						Main.game.getTextEndStringBuilder().append(
 								"<p style='text-align:center;'>"
-										+ "<i style='color:"+Colour.GENERIC_MINOR_BAD.toWebHexString()+";'>"+MilkingRoom.INGESTION_AMOUNT+"ml of "+fluidOwnerName+" "+fluidName+" has been consumed!</i>"
+										+ "<i style='color:"+Colour.GENERIC_MINOR_BAD.toWebHexString()+";'>"+Units.fluid(MilkingRoom.INGESTION_AMOUNT)+" of "+fluidOwnerName+" "+fluidName+" has been consumed!</i>"
 								+ "</p>");
 						
-						room.incrementFluidStored(fluid.getFluidCharacter(), fluid.getFluid(), -milkAmount);
-						Main.game.setContent(new Response("", "", Main.game.getCurrentDialogueNode()));
-					}
-				}, false);
+						try {
+							GameCharacter c = fluid.getFluidCharacter();
+							room.incrementFluidStored(c, fluid.getFluid(), -milkAmount);
+						} catch (Exception e1) {
+							room.incrementFluidStored(null, fluid.getFluid(), -milkAmount);
+						}
+						
+						Main.game.setContent(new Response("", "", LilayaHomeGeneric.MILKED));
+						
+					}, false);
+				}
 				
 				MainController.addEventListener(MainController.document, id, "mousemove", MainController.moveTooltipListener, false);
 				MainController.addEventListener(MainController.document, id, "mouseleave", MainController.hideTooltipListener, false);
 				String verb = "Drink";
-				String description = "Drink "+milkAmount+"ml of the "+fluidName+".";
-				if(area.getKey()!=CoverableArea.MOUTH) {
-					verb = "Pump";
-					description = "Pump "+milkAmount+"ml of the "+fluidName+" into your "+area.getKey().getName()+".";
+				String description;
+				
+				if(MilkingRoom.getTargetedCharacter().isPlayer()) {
+					description = "Drink "+Units.fluid(milkAmount)+" of the "+fluidName+".";
+					if(area.getKey()!=CoverableArea.MOUTH) {
+						verb = "Pump";
+						description = "Pump "+Units.fluid(milkAmount)+" of the "+fluidName+" into your "+area.getKey().getName()+".";
+					}
+					
+				} else {
+					description = UtilText.parse(MilkingRoom.getTargetedCharacter(), "Get [npc.name] to drink ")+Units.fluid(milkAmount)+" of the "+fluidName+".";
+					if(area.getKey()!=CoverableArea.MOUTH) {
+						verb = "Pump";
+						description = "Pump "+Units.fluid(milkAmount)+" of the "+fluidName+" into " + UtilText.parse(MilkingRoom.getTargetedCharacter(),"[npc.namePos] ")+area.getKey().getName()+".";
+					}
 				}
+				
 				if(canIngest) {
-					TooltipInformationEventListener el =  new TooltipInformationEventListener().setInformation(verb+" ("+milkAmount+"ml)",
+					TooltipInformationEventListener el =  new TooltipInformationEventListener().setInformation(verb+" ("+Units.fluid(milkAmount)+")",
 							description);
 					MainController.addEventListener(MainController.document, id, "mouseenter", el, false);
 					
 				} else {
-					TooltipInformationEventListener el =  new TooltipInformationEventListener().setInformation(verb+" ("+milkAmount+"ml)",
-							room.getAreaIngestionBlockedDescription(Main.game.getPlayer(), area.getKey(), milkAmount));
+					TooltipInformationEventListener el =  new TooltipInformationEventListener().setInformation(verb+" ("+Units.fluid(milkAmount)+")",
+							room.getAreaIngestionBlockedDescription(fluid.getFluid().getType().getBaseType(), MilkingRoom.getTargetedCharacter(), area.getKey(), milkAmount));
 					MainController.addEventListener(MainController.document, id, "mouseenter", el, false);
 				}
 			}
 		}
 		
-		String id = idModifier+"_SELL_"+fluid.getFluid().hashCode();
+		String id = idModifier+"_SELL_"+fluid.hashCode();
 		if (((EventTarget) MainController.document.getElementById(id)) != null) {
 			((EventTarget) MainController.document.getElementById(id)).addEventListener("click", e -> {
 				int income = Math.max(1, (int)(fluid.getFluid().getValuePerMl()*fluid.getMillilitres()));

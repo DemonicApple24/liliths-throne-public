@@ -1515,6 +1515,7 @@ public class SexPositionBipeds {
 									SexSlotBipeds.KNEELING_PERFORMING_ORAL,
 									new SexActionInteractions(
 										Util.mergeMaps(
+											SexActionPresets.fingerToMouth,
 											SexActionPresets.tailToUpperTorso,
 											SexActionPresets.tentacleToUpperTorso,
 											SexActionPresets.groinToMouth,
@@ -2679,7 +2680,7 @@ public class SexPositionBipeds {
 														OrgasmCumTarget.LEGS))))))) {
 		@Override
 		public String getDescription() {
-			if(Main.game.getPlayer().getLocationPlace().getPlaceType()==PlaceType.SHOPPING_ARCADE_VICKYS_SHOP) {
+			if(Main.game.getPlayer().getLocationPlace().getPlaceType().equals(PlaceType.SHOPPING_ARCADE_VICKYS_SHOP)) {
 				return "You're lying back on top of Arcane Arts' front desk, with the aggressive owner, Vicky, standing between your [pc.legs]."
 						+ " She lets out a menacing growl as she steps forwards, preparing to fuck you in the missionary position.";
 			}
@@ -3169,8 +3170,7 @@ public class SexPositionBipeds {
 													SexActionPresets.tailToAllAreas,
 													SexActionPresets.tentacleToAllAreas,
 													SexActionPresets.vaginaToPenis,
-													SexActionPresets.assToPenis,
-													SexActionPresets.kissing),
+													SexActionPresets.assToPenis),
 											DOGGY_STYLE.getSexInteractions(SexSlotBipeds.DOGGY_ON_ALL_FOURS, SexSlotBipeds.DOGGY_BEHIND).getAvailableCumTargets())))),
 					new Value<>(
 							SexSlotBipeds.PET_MOUNTING_HUMPING,
